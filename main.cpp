@@ -29,46 +29,88 @@ void FindSolution()
 
 	for (iteration = 0; iteration < maxiter && residual > eps; iteration++)
 	{	
+		if (rank == 0) printf("%d::  --------------------START ITERATION %d---------------------\n", rank, iteration);
 		for (auto i : newResult) i = 0;
 		for (auto i : oldResult) i = 0;
 		
 		oldMap = newMap;
-		newMap = firstMap;
-		
-		for (int i = 0; i < allTasks.size(); i++)
-		{
-			currentTasks.push(allTasks[i]);
+		while (!allTasks.empty()) {
+			Task *t = allTasks.front();					
+			currentTasks.push(t);
+			allTasks.pop();
 		}
+		
+		/*printf("%d:: block = %d, lock = %d, tpp = %d, f = %d, fs = %d\n",rank,currentTasks.back()->blockNumber,currentTasks.back()->localNumber, currentTasks.back()->tasks_x, currentTasks.back()->flag, currentTasks.back()->firstStart );
+		printf("existRecv: %d %d %d %d %d %d\n", currentTasks.back()->existRecv[0], currentTasks.back()->existRecv[1], currentTasks.back()->existRecv[2], currentTasks.back()->existRecv[3], currentTasks.back()->existRecv[4], currentTasks.back()->existRecv[5]);
+		printf("neighbors: %d %d %d %d %d %d\n", currentTasks.back()->neighbors[0], currentTasks.back()->neighbors[1], currentTasks.back()->neighbors[2], currentTasks.back()->neighbors[3], currentTasks.back()->neighbors[4], currentTasks.back()->neighbors[5]);
+				
+		printf("oldU:\n");
+		for (int z = 0; z < currentTasks.back()->oldU.size();z++)
+			printf("oldU[%d] = %lf\n", z, currentTasks.back()->oldU[z]);
+		printf("\n");
+		printf("newU:\n");
+		for (int z = 0; z <  currentTasks.back()->newU.size();z++)
+			printf("newU[%d] = %lf\n", z,  currentTasks.back()->newU[z]);
+		printf("\n");*/
+		printf("%d:: SIZE = %d\n",rank,currentTasks.size());
+
 		// Порождение рабочих потоков
 		for (int i = 0; i < countOfWorkers; i++)
-			if (0 != pthread_create(&thrs[i], &attrs, worker, &ids[i]))
-			{
+			if (0 != pthread_create(&thrs[i], &attrs, worker, &ids[i])) {
 				perror("Cannot create a thread");
 				abort();
 			}
 		
 		// Порождение диспетчера
+		if (size != 1)
 		if (0 != pthread_create(&thrs[countOfWorkers], &attrs, dispatcher, &ids[countOfWorkers])) {
 			perror("Cannot create a thread");
 			abort();
 		}
 
 		// Ожидание завершения порожденных потоков
-		for (int i = 0; i < countOfThreads-1; i++)
-		//for (int i = 0; i < countOfWorkers; i++)
-			if (0 != pthread_join(thrs[i], NULL)) {
-				perror("Cannot join a thread");
-				abort();
-			}
+		if (size != 1) {
+			for (int i = 0; i < countOfThreads-1; i++)
+				if (0 != pthread_join(thrs[i], NULL)) {
+					perror("Cannot join a thread");
+					abort();
+				}
+		}
+		else {	
+			for (int i = 0; i < countOfWorkers; i++)
+				if (0 != pthread_join(thrs[i], NULL)) {
+					perror("Cannot join a thread");
+					abort();
+				}
+		}
+
 		sum = 0;
 		// Расчёт абсолютной погрешности между текущим и предыдущим решениями
 		for (int i = 0; i < newResult.size(); i++)
-				sum += (newResult[i] - oldResult[i])*(newResult[i] - oldResult[i]);
+			sum += (newResult[i] - oldResult[i])*(newResult[i] - oldResult[i]);
 
 		MPI_Allreduce(&sum, &residual, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 		residual = sqrt(residual);
-		if (rank == 0)
-			printf("%d:: ITERATION %d\n", rank, iteration);
+		printf("%d:: res = %lf\n",rank, residual );
+		MPI_Allreduce(newResult.data(), globalRes.data(), newResult.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+		/*if (rank == 0) {
+			
+			// Вывод результата
+			//if (iteration == 55){
+				printf("\n--------------------------------------------------------------------\n\n");
+				double sum = 0;
+				for (int i = 0; i < globalRes.size(); i++)
+				{
+					sum += (2. - globalRes[i])*(2. - globalRes[i]);
+					printf("%.14lf\n", newResult[i]);
+				}	
+				sum = sqrt(sum);
+				printf("||result|| = %.10e\n", sum);
+				printf("\n--------------------------------------------------------------------\n");
+			//}
+		}*/
+		if (rank == 0) printf("%d:: --------------------FINISH ITERATION %d---------------------\n", rank, iteration);
 	}
 	MPI_Request s;
 	int exit = -1;
@@ -101,21 +143,12 @@ int main(int argc, char **argv)
 	GenerateQueueOfTask();
 	FindSolution();
 
-	if (size != 1)
-	{
-		MPI_Allreduce(newResult.data(), globalRes.data(), newResult.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-		//MPI_Reduce(timer.data(), time.data(), time.size(), MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-		//MPI_Reduce(iterations.data(), resIterations.data(), resIterations.size(), MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-		//MPI_Reduce(res.data(), globalR.data(), res.size(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	}
-	else
-	{
-		globalRes = newResult;
-		//time[0] = timer[0];
-		//resIterations[0] = iteration;
-		//globalR[0] = residual;
-	}
 
+	MPI_Allreduce(newResult.data(), globalRes.data(), newResult.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	//MPI_Reduce(timer.data(), time.data(), time.size(), MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+	//MPI_Reduce(iterations.data(), resIterations.data(), resIterations.size(), MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+	//MPI_Reduce(res.data(), globalR.data(), res.size(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	
 	/*unsigned int allTime = 0;
 	for (int i = 0; i < size; i++)
 		if (allTime < time[i])
