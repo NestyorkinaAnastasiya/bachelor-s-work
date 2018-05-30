@@ -13,35 +13,33 @@
 #include <fstream>
 #include <math.h>
 #include <stddef.h>
-
-pthread_mutex_t mutex;
-// Максимальное кол-во итераций
-int maxiter = 56;
+int countOfConnect = 2;
+// РњР°РєСЃРёРјР°Р»СЊРЅРѕРµ РєРѕР»-РІРѕ РёС‚РµСЂР°С†РёР№
+int maxiter = 10000;
 double eps = 1e-8;
 double residual = 1;
 int dim;
 int size, rank;
-// Шаги сетки
-double	/*hx = 0.1,
-		hy = 0.1,
-		hz = 0.1;*/
-		/*hx = 0.2,
-		hy = 0.2,
-		hz = 0.2;*/
+// РЁР°РіРё СЃРµС‚РєРё
+double	hx = 0.1,
+	hy = 0.1,
+	hz = 0.1;
+	/*hx = 0.25,
+	hy = 0.25,
+	hz = 0.25;*/
 
-	hx = 0.5,
+	/*hx = 0.5,
 	hy = 0.5,
-	hz = 0.5;
+	hz = 0.5;*/
 
-/*hx = 1,
-hy = 1,
-hz = 1;*/
-
-int sizeBlockY = 2,
-sizeBlockZ = 2;
-std:: vector <int> tasks_y, tasks_z, oldMap, newMap;
-int k_y, k_z;
-// Координаты начала и конца области
+	/*hx = 1,
+	hy = 1,
+	hz = 1;
+	*/
+int sizeBlockY = 10,
+sizeBlockZ = 10;
+std:: vector <int> map;
+// РљРѕРѕСЂРґРёРЅР°С‚С‹ РЅР°С‡Р°Р»Р° Рё РєРѕРЅС†Р° РѕР±Р»Р°СЃС‚Рё
 double	begX = 0, endX = 2,
 begY = 0, endY = 2,
 begZ = 0, endZ = 2;
@@ -64,18 +62,16 @@ std::vector<double> oldResult, newResult;
 std::vector <double> globalRes;
 std::vector <double> globalOldRes;
 int iteration = 0;
-// Количество интервалов по координате
+// РљРѕР»РёС‡РµСЃС‚РІРѕ РёРЅС‚РµСЂРІР°Р»РѕРІ РїРѕ РєРѕРѕСЂРґРёРЅР°С‚Рµ
 int intervalsX, intervalsY, intervalsZ;
-// Количество интервалов по х на процесс
-int tasksPerProcess;
 
 struct Task
 {
 	double *oldData, *newData;
 	int blockNumber;
 	int localNumber;
-	int tasks_x;
-	int flag = 1, firstStart = 1, existRecv[6] = { 1,1,1,1,1,1 };
+	int tasks_x, tasks_y;
+	int flag = 1;
 	//	LeftX, RightX, LowY, UpY, LowZ, UpZ;
 	std::array<std::vector<double>, 6> borders;
 	std::array <MPI_Request, 6>  sendReq, recvReq;
@@ -87,20 +83,38 @@ struct Task
 	bool BelongToShadowBorders(int node);
 	bool BelongToKU(int node);
 	void Calculate1Node(int i);
+	void Calculate1NodeOfBorders(int node);
+	void ReceiveFromNeighbors(MPI_Comm Comm);
+	void SendToNeighbors(MPI_Comm Comm);
 	void Run();
+	~Task();
 };
+
 std::vector<Task> t;
 
-// Функция принадлежности узла node теневой границе
+Task::~Task()
+{ 
+ 	for (int i = 0; i < 6; i++) {
+		borders[i].clear();
+		shadowBorders[i].clear();
+	}
+	oldU.clear();
+	newU.clear();
+	F.clear();
+	points.clear();
+	numbersOfKU.clear();
+}
+
+// Р¤СѓРЅРєС†РёСЏ РїСЂРёРЅР°РґР»РµР¶РЅРѕСЃС‚Рё СѓР·Р»Р° node С‚РµРЅРµРІРѕР№ РіСЂР°РЅРёС†Рµ
 bool Task::BelongToShadowBorders(int node)
 {
-	for (int i = 0; i < shadowBorders.size(); i++)
+	for (int i = 0; i < 6; i++)
 		for (int j = 0; j < shadowBorders[i].size(); j++)
 			if (shadowBorders[i][j] == node) return true;
 	return false;
 }
 
-// Функция принадлежности узла node краевым условиям
+// Р¤СѓРЅРєС†РёСЏ РїСЂРёРЅР°РґР»РµР¶РЅРѕСЃС‚Рё СѓР·Р»Р° node РєСЂР°РµРІС‹Рј СѓСЃР»РѕРІРёСЏРј
 bool Task::BelongToKU(int node)
 {
 	for (int i = 0; i < numbersOfKU.size(); i++)
@@ -108,161 +122,175 @@ bool Task::BelongToKU(int node)
 	return false;
 }
 
+void Task::ReceiveFromNeighbors(MPI_Comm Comm)
+{
+	MPI_Status st;
+	//printf("%d:: open recv run on %d task\n", rank, blockNumber);	
+	for (int i = 0; i < 6; i++)
+		if (neighbors[i] != -1)
+			MPI_Recv(borders[i].data(), borders[i].size(), MPI_DOUBLE, MPI_ANY_SOURCE, blockNumber * 6 + i, Comm, &st);
+	//printf("%d:: close recv run\n",rank);	
+}
+
+void Task::SendToNeighbors(MPI_Comm Comm)
+{	//printf("%d:: send recv run on %d task\n",rank, blockNumber);
+	int map_id;	
+	for (int i = 0; i < 6; i++) {	
+		switch (i) {
+			case 0: map_id = 1; break;
+			case 1: map_id = 0; break;
+			case 2: map_id = 3; break;
+			case 3: map_id = 2; break;
+			case 4: map_id = 5; break;
+			case 5: map_id = 4; break;
+		}
+		if (neighbors[i] != -1)
+			MPI_Isend(borders[i].data(), borders[i].size(), MPI_DOUBLE, map[neighbors[i]], neighbors[i] * 6 + map_id, Comm, &sendReq[i]);
+	}
+}
+
 void Task::Calculate1Node(int i)
 {
-	double result;
-	// Смещения, для расчёта соседей по y и по z
-	int offsetY = tasks_x + 1, offsetZ = (tasks_x + 1)*(tasks_y[localNumber % k_y] + 1);
-
-	// Если узел принадлежит к границе, то накладываются первые краевые условия
+	// РЎРјРµС‰РµРЅРёСЏ, РґР»СЏ СЂР°СЃС‡С‘С‚Р° СЃРѕСЃРµРґРµР№ РїРѕ y Рё РїРѕ z
+	int offsetY = tasks_x + 1, offsetZ = (tasks_x + 1)*(tasks_y + 1);
+	//printf ("%d:: OFFSETY = %d; OFFSETZ = %d; localNumber = %d; tasks_y[lN] = %d\n", blockNumber, offsetY, offsetZ, localNumber, tasks_y[localNumber % k_y]);
+	double 	hx_2 = pow(hx, 2), hy_2 = pow(hy, 2), hz_2 = pow(hz, 2); 
+	
+	// Р•СЃР»Рё СѓР·РµР» РїСЂРёРЅР°РґР»РµР¶РёС‚ Рє РіСЂР°РЅРёС†Рµ, С‚Рѕ РЅР°РєР»Р°РґС‹РІР°СЋС‚СЃСЏ РїРµСЂРІС‹Рµ РєСЂР°РµРІС‹Рµ СѓСЃР»РѕРІРёСЏ
 	if (BelongToKU(i)) newData[i] = F[i];
 	else {
-		result = (oldData[i - 1] + oldData[i + 1]) / pow(hx, 2) +
-			(oldData[i - offsetY] + oldData[i + offsetY]) / pow(hy, 2) +
-			(oldData[i - offsetZ] + oldData[i + offsetZ]) / pow(hz, 2) - F[i];
-		result *= pow(hx, 2)*pow(hy, 2)*pow(hz, 2) / 2 / (pow(hy, 2)*pow(hz, 2) +
-			pow(hz, 2)*pow(hx, 2) + pow(hx, 2)*pow(hy, 2));
+		double x_left, x_right, y_low, y_up, z_low, z_up;
+		
+		for (int l = 0; l < shadowBorders.size(); l++) {
+			bool flag = false;	
+			int k;
+			for (k = 0; k < shadowBorders[l].size(); k++)
+				if (shadowBorders[l][k] == i) { 
+					flag = true; break;
+				}
+			
+			switch (l) {
+				case 0: {
+					if (flag) x_left = borders[l][k]; 
+					else x_left = oldData[i - 1];
+				} break;
+				case 1: {
+					if (flag) x_right = borders[l][k]; 
+					else x_right = oldData[i + 1];
+				} break;
+				case 2: {
+					if (flag) y_low = borders[l][k];
+					else y_low = oldData[i - offsetY];
+				} break;
+				case 3: {
+					if (flag) y_up = borders[l][k];  
+					else y_up = oldData[i + offsetY];
+				} break;
+				case 4: {
+					if (flag) z_low = borders[l][k]; 
+					else z_low = oldData[i - offsetZ]; 
+				} break;
+				case 5:	{
+					if (flag) z_up = borders[l][k];
+					else z_up = oldData[i + offsetZ]; 
+				} break;
+			}	
+		}
+
+		double result = (x_left + x_right) / hx_2 + (y_low + y_up) / hy_2 + (z_low + z_up) / hz_2 - F[i];
+		result *= hx_2 * hy_2 * hz_2 / 2 / (hy_2 * hz_2 + hz_2 * hx_2 + hx_2 * hy_2);
 		newData[i] = result;
 	}
 }
 
 void Task::Run()
-{
-	printf("%d:: open run\n",rank);	
+{	
 	MPI_Status st;
-	int k=1;
 	if (flag == 1) {
 		oldData = oldU.data();
 		newData = newU.data();
-		k = 1;
 	}
 	else {
 		oldData = newU.data();
 		newData = oldU.data();
-		k = 3000;
 	}
-	// Рассчёт новых границ их передача и принятие границ от других блоков
+
+	std::array<std::vector<double>,6> tmp;
+	// Р Р°СЃСЃС‡С‘С‚ РЅРѕРІС‹С… РіСЂР°РЅРёС† РёС… РїРµСЂРµРґР°С‡Р° Рё РїСЂРёРЅСЏС‚РёРµ РіСЂР°РЅРёС† РѕС‚ РґСЂСѓРіРёС… Р±Р»РѕРєРѕРІ
+		// РџСЂРѕС…РѕРґРёРјСЃСЏ РїРѕ СЃРµС‚РєРµ
+	for (int i = 0; i < oldU.size(); i++)
+			Calculate1Node(i);
+	
 	for (int i = 0; i < shadowBorders.size(); i++)
 		if (neighbors[i] != -1) {
-			
-			int id, map_id;
-			// Смещения относительно  теневых границ
+			int id;
+			// РЎРјРµС‰РµРЅРёСЏ РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ  С‚РµРЅРµРІС‹С… РіСЂР°РЅРёС†
 			switch (i) {
-			case 0: id = 2; map_id = 1; break;
-			case 1: id = -2;  map_id = 0; break;
-			case 2: id = 2 * (tasks_x + 1); map_id = 3; break;
-			case 3: id = -2 * (tasks_x + 1); map_id = 2; break;
-			case 4: id = 2 * (tasks_x + 1) * (tasks_y[localNumber % k_y] + 1); map_id = 5; break;
-			case 5: id = -2 * (tasks_x + 1) * (tasks_y[localNumber % k_y] + 1); map_id = 4; break;
+			case 0: id = 1; break;
+			case 1: id = -1; break;
+			case 2: id = (tasks_x + 1);  break;
+			case 3: id = -1 * (tasks_x + 1); break;
+			case 4: id = (tasks_x + 1) * (tasks_y + 1);  break;
+			case 5: id = -1 * (tasks_x + 1) * (tasks_y + 1); break;
 			}
-
-			if (firstStart == 1) {
-				borders[i].resize(shadowBorders[i].size());
-				for (auto &el : borders[i]) el = 1;
+			tmp[i].resize(borders[i].size());
+			for (int j = 0; j < shadowBorders[i].size(); j++) {				
+					tmp[i][j] = newData[shadowBorders[i][j] + id];
 			}
-			else if (oldMap[blockNumber] == newMap[blockNumber]) {
-				int flag_test;
-				MPI_Test(&sendReq[i], &flag_test, &st);
-				if (!flag_test) {MPI_Isend(borders[i].data(), borders[i].size(), MPI_DOUBLE, newMap[neighbors[i]], k*neighbors[i] * 6 + map_id, MPI_COMM_WORLD, &sendReq[i]);}	
-
-			}
-
-			if (existRecv[i] != 1)
-				MPI_Recv(borders[i].data(), borders[i].size(), MPI_DOUBLE, oldMap[neighbors[i]], k*blockNumber * 6 + i, MPI_COMM_WORLD, &st);
-			for (int j = 0; j < shadowBorders[i].size(); j++) {
-				if (!BelongToShadowBorders(shadowBorders[i][j] + id)) {
-					oldData[shadowBorders[i][j]] = borders[i][j];
-					Calculate1Node(shadowBorders[i][j] + id);
-					borders[i][j] = newData[shadowBorders[i][j] + id];
-				}
-			}
-			if(k == 1) k = 3000;
-			else k = 1;
-			MPI_Isend(borders[i].data(), borders[i].size(), MPI_DOUBLE, newMap[neighbors[i]], k*neighbors[i] * 6 + map_id, MPI_COMM_WORLD, &sendReq[i]);
-			if (existRecv[i] == 1) existRecv[i] = 0;
 		}
-		if (firstStart == 1) firstStart = 0;
 	
-	// Проходимся по сетке
-	for (int i = 0; i < oldU.size(); i++)
-		if (!BelongToShadowBorders(i))
-			Calculate1Node(i);
-
 	int id;
 	for (int i = 0; i < newU.size(); i++)
 	{
 		bool flag_ = false;
-		
 		for (int j = 0; j < shadowBorders.size() / 2; j++)
 		{
-			switch (2 * j + 1) {
-			case 1: id = 1; break;
-			case 3: id = (tasks_x + 1); break;
-			case 5: id = (tasks_x + 1) * (tasks_y[localNumber % k_y] + 1); break;
-			}
 			for (int k = 0; k < shadowBorders[2 * j + 1].size(); k++)
-				if (shadowBorders[2 * j + 1][k] - id == i ) { flag_ = true; break; }
+				if (shadowBorders[2 * j + 1][k] == i ) { flag_ = true; break; }
 			if (flag_) break;
 		}
-		if (!BelongToShadowBorders(i) && !flag_)
-		{
+		if (!flag_) {
 			newResult[points[i].globalNumber] = newData[i];
 			oldResult[points[i].globalNumber] = oldData[i];
 		}
-	}
+	}	
+	borders = tmp;
 	if (flag == 0)	flag = 1;
 	else flag = 0;
-	printf("%d:: close run\n",rank);	
 }
 std::queue<Task*> allTasks;
 
-// Учёт первых краевых условий
+// РЈС‡С‘С‚ РїРµСЂРІС‹С… РєСЂР°РµРІС‹С… СѓСЃР»РѕРІРёР№
 double CalcF1BC(double x, double y, double z)
 {
 	return 2;
 }
 
-// Правая часть уравнения Пуассона
+// РџСЂР°РІР°СЏ С‡Р°СЃС‚СЊ СѓСЂР°РІРЅРµРЅРёСЏ РџСѓР°СЃСЃРѕРЅР°
 double CalcF(double x, double y, double z)
 {
 	return 0;
 }
 
-int CalculateNumberBeg(int residue, int &taskPerIterval, int rank_, int end)
+int CalculateNumberBeg(int residue, int &taskPerIterval, int rank_)
 {
 	int number_beg;
-	if (residue != 0 && rank_ < residue)
-		taskPerIterval++;
-	// Если процесс не входит в область задач с лишними подзадачами
-	if (residue != 0 && residue <= rank_)
-	{
-		// Смещаем по области задач с лишними подзадачами
+	if (residue != 0 && rank_ < residue) taskPerIterval++;
+	// Р•СЃР»Рё РїСЂРѕС†РµСЃСЃ РЅРµ РІС…РѕРґРёС‚ РІ РѕР±Р»Р°СЃС‚СЊ Р·Р°РґР°С‡ СЃ Р»РёС€РЅРёРјРё РїРѕРґР·Р°РґР°С‡Р°РјРё
+	if (residue != 0 && residue <= rank_) {
+		// РЎРјРµС‰Р°РµРј РїРѕ РѕР±Р»Р°СЃС‚Рё Р·Р°РґР°С‡ СЃ Р»РёС€РЅРёРјРё РїРѕРґР·Р°РґР°С‡Р°РјРё
 		number_beg = residue * (taskPerIterval + 1);
-		// -//- по остальным
+		// -//- РїРѕ РѕСЃС‚Р°Р»СЊРЅС‹Рј
 		number_beg += (rank_ - residue)*taskPerIterval;
 	}
-	else // Если входит, то количество задач на процесс совпадает с предыдущими
-	{
+	else // Р•СЃР»Рё РІС…РѕРґРёС‚, С‚Рѕ РєРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РґР°С‡ РЅР° РїСЂРѕС†РµСЃСЃ СЃРѕРІРїР°РґР°РµС‚ СЃ РїСЂРµРґС‹РґСѓС‰РёРјРё
 		number_beg = rank_ * taskPerIterval;
-	}
 
-	//	Нам нужны теневые границы
-	// Для первого и последнего процесса +1 теневая грань
-	if ((rank_ == 0 || rank_ == end))
-	{
-		if (rank_ == end) number_beg--;
-		taskPerIterval++;
-	}
-	else // для остальных +2
-	{
-		taskPerIterval += 2;
-		number_beg--;
-	}
 	return number_beg;
 }
 
-void GenerateQueueOfTask()
-{	
+void GenerateBasicConcepts()
+{
 	int          len[5] = { 1,1,1,1,1 };
 	MPI_Aint     pos[5] = { offsetof(Point,x), offsetof(Point,y), offsetof(Point,z), offsetof(Point,globalNumber), sizeof(Point) };
 	MPI_Datatype typ[5] = { MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_INT,MPI_UB };
@@ -272,59 +300,68 @@ void GenerateQueueOfTask()
 	
 
 	double	l;
-	double x, y, z;
-	std::vector<int> globalNumbersOfKU;
-	// Бьём задачи по координате х
+	// Р‘СЊС‘Рј Р·Р°РґР°С‡Рё РїРѕ РєРѕРѕСЂРґРёРЅР°С‚Рµ С…
 	l = abs(endX - begX);	intervalsX = l / hx;
-	tasksPerProcess = intervalsX / size;
-	// Если количество интервалов не кратно числу процессов
-	// то распределяем оставшиеся задачи по первым процессам
-	int residue = intervalsX % size;
-
 	l = abs(endY - begY);	intervalsY = l / hy;
 	l = abs(endZ - begZ);	intervalsZ = l / hz;
 	dim = (intervalsX + 1) * (intervalsY + 1) * (intervalsZ + 1);
+	newResult.resize(dim);
+	oldResult.resize(dim);
+	globalRes.resize(dim);
+	globalOldRes.resize(dim);
+}
 
-	// Формирование глобальных номеров краевых условий
+void GenerateQueueOfTask()
+{	
+	double	l;
+	double x, y, z;
+	std::vector<int> globalNumbersOfKU;
+	// Р‘СЊС‘Рј Р·Р°РґР°С‡Рё РїРѕ РєРѕРѕСЂРґРёРЅР°С‚Рµ С…
+	int tasksPerProcess = intervalsX / size;
+	// Р•СЃР»Рё РєРѕР»РёС‡РµСЃС‚РІРѕ РёРЅС‚РµСЂРІР°Р»РѕРІ РЅРµ РєСЂР°С‚РЅРѕ С‡РёСЃР»Сѓ РїСЂРѕС†РµСЃСЃРѕРІ
+	// С‚Рѕ СЂР°СЃРїСЂРµРґРµР»СЏРµРј РѕСЃС‚Р°РІС€РёРµСЃСЏ Р·Р°РґР°С‡Рё РїРѕ РїРµСЂРІС‹Рј РїСЂРѕС†РµСЃСЃР°Рј
+	int residue = intervalsX % size;
+	
+	// Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ РіР»РѕР±Р°Р»СЊРЅС‹С… РЅРѕРјРµСЂРѕРІ РєСЂР°РµРІС‹С… СѓСЃР»РѕРІРёР№
 	for (int i = 0; i < intervalsZ + 1; i++)
 		for (int j = 0; j < intervalsY + 1; j++)
 			for (int k = 0; k < intervalsX + 1; k++)
 				if (i == 0 || i == intervalsZ || j == 0 || j == intervalsY || k == 0 || k == intervalsX)
 					globalNumbersOfKU.push_back(k + (intervalsX + 1)*j + (intervalsX + 1)*(intervalsY + 1)*i);
 
-
-	// Глобальный номер первого элемента сетки
+	// Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ РЅРѕРјРµСЂ РїРµСЂРІРѕРіРѕ СЌР»РµРјРµРЅС‚Р° СЃРµС‚РєРё
 	int number_beg_x = 0, firstX = begX;
-	if (size != 1)
-	{
-		number_beg_x = CalculateNumberBeg(residue, tasksPerProcess, rank, size - 1);
+	if (size != 1)	{
+		number_beg_x = CalculateNumberBeg(residue, tasksPerProcess, rank);
 		firstX += number_beg_x * hx;
 	}
 
 	int number_beg_z = 0, number_beg_y = 0;
-	//if (rank == 1) printf("%d:: number_beg_x = %d\n", rank, number_beg_x);
-	// Начало и конец области с теневыми
-	k_y = intervalsY / sizeBlockY, k_z = intervalsZ / sizeBlockZ;
+	
+	int k_y = intervalsY / sizeBlockY, k_z = intervalsZ / sizeBlockZ;
 	int r_y = intervalsY % sizeBlockY, r_z = intervalsZ % sizeBlockZ;
-	t.resize(k_y*k_z);
-	tasks_z.resize(k_z);
-	tasks_y.resize(k_y);
+	
+	t.resize(k_y * k_z);
+	map.resize(k_y * k_z * size);	
+
+	std:: vector <int> tasks_y(k_y), tasks_z(k_z);
+
 	for (int i_z = 0; i_z < k_z; i_z++)
 	{
-		// количество интервалов
+		// РєРѕР»РёС‡РµСЃС‚РІРѕ РёРЅС‚РµСЂРІР°Р»РѕРІ
 		tasks_z[i_z] = sizeBlockZ;
-		number_beg_z = CalculateNumberBeg(r_z, tasks_z[i_z], i_z, k_z - 1);
+		number_beg_z = CalculateNumberBeg(r_z, tasks_z[i_z], i_z);
+		
 		z = begZ + number_beg_z * hz;
-		// по количеству точек
+		// РїРѕ РєРѕР»РёС‡РµСЃС‚РІСѓ С‚РѕС‡РµРє
 		for (int i = 0; i < tasks_z[i_z] + 1; i++)
 		{
 			for (int j_y = 0; j_y < k_y; j_y++)
 			{
 				tasks_y[j_y] = sizeBlockY;
-				number_beg_y = CalculateNumberBeg(r_y, tasks_y[j_y], j_y, k_y - 1);
+				number_beg_y = CalculateNumberBeg(r_y, tasks_y[j_y], j_y);
 				y = begY + number_beg_y * hy;
 				int idBlock = i_z * k_y + j_y;
-				//if (rank == 0) printf ("id_block %d k_y = %d, k_z = %d\n",idBlock,k_y,k_z );
 				for (int j = 0; j < tasks_y[j_y] + 1; j++)
 				{
 					x = firstX;
@@ -341,15 +378,15 @@ void GenerateQueueOfTask()
 						bool ku = false;
 						for (int z = 0; z < globalNumbersOfKU.size(); z++)
 							if (globalNumbersOfKU[z] == number) ku = true;
-						// Расчёт правых частей
+						// Р Р°СЃС‡С‘С‚ РїСЂР°РІС‹С… С‡Р°СЃС‚РµР№
 						if (ku) {
 							t[idBlock].F.push_back(CalcF1BC(x, y, z));
-							// Локальные адреса краевых условий
+							// Р›РѕРєР°Р»СЊРЅС‹Рµ Р°РґСЂРµСЃР° РєСЂР°РµРІС‹С… СѓСЃР»РѕРІРёР№
 							t[idBlock].numbersOfKU.push_back(t[idBlock].oldU.size() - 1);
 						}
 						else t[idBlock].F.push_back(CalcF(x, y, z));
 
-						// Локальнные адреса теневых границ
+						// Р›РѕРєР°Р»СЊРЅРЅС‹Рµ Р°РґСЂРµСЃР° С‚РµРЅРµРІС‹С… РіСЂР°РЅРёС†
 						if (k == 0 && rank != 0)
 							t[idBlock].shadowBorders[0].push_back(t[idBlock].oldU.size() - 1);
 						else if (k == tasksPerProcess && rank != size - 1)
@@ -364,26 +401,24 @@ void GenerateQueueOfTask()
 							t[idBlock].shadowBorders[4].push_back(t[idBlock].oldU.size() - 1);
 						else if (i == tasks_z[i_z] && z != endZ)
 							t[idBlock].shadowBorders[5].push_back(t[idBlock].oldU.size() - 1);
-						x += hx;
+						x = firstX + hx*(k+1);
 					}
-					y += hy;
+					y = begY + number_beg_y * hy + hy*(j+1);
 				}
 			}
-			z += hz;
+			z = begZ + number_beg_z * hz + hz*(i+1);
 		}
 	}
-	std::vector<int> tmp_map(t.size()*size);
-	oldMap.resize(t.size()*size);
-	for(int i = 0; i<tmp_map.size(); i++)
-		oldMap[i] = 0;
+
 	for (int i = 0; i < t.size(); i++)
 	{
 		t[i].newU.resize(t[i].oldU.size());
 		t[i].blockNumber = rank + size * i;
 		t[i].localNumber = i;
 		t[i].tasks_x = tasksPerProcess;
-		tmp_map[t[i].blockNumber] = rank;
-		// Первоначальное расположение теневых границ в узлах
+		t[i].tasks_y = 	tasks_y[i % k_y];
+		
+		map[t[i].blockNumber] = rank;
 		if (rank) {
 			t[i].neighbors[0] = t[i].blockNumber - 1;
 		}
@@ -421,117 +456,79 @@ void GenerateQueueOfTask()
 		else {
 			t[i].neighbors[5] = -1;
 		}
+		for (int j = 0; j < t[i].shadowBorders.size(); j++)
+			if (t[i].neighbors[j] != -1) {
+				t[i].borders[j].resize(t[i].shadowBorders[j].size());
+				for (auto &el : t[i].borders[j]) el = 1;
+			}
 		allTasks.push(&t[i]);
 	}
-
-	newResult.resize(dim);
-	oldResult.resize(dim);
-	globalRes.resize(dim);
-	globalOldRes.resize(dim);
-	newMap.resize(oldMap.size());
-	for(int i = 0; i<oldMap.size(); i++)
-		oldMap[i] = 0;
-
-	MPI_Allreduce(tmp_map.data(), oldMap.data(), oldMap.size(), MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-	newMap = oldMap;
 }
 
-void GenerateSend(Task *t, int peer)
+void GenerateSend(Task *t, int peer, MPI_Comm Comm)
 {
 	MPI_Status st;
-	int k;
-	if (t->flag == 1) {
-		k = 1;
-	}
-	else {
-		k = 3000;
-	}
-	// Проверка на то, были ли уже отправлены данные этой задаче на текущее расположение 
-	if (t->firstStart != 1)
-		for (int i = 0; i < 6; i++)
-			if (t->neighbors[i] != -1) {
-				int flag_test = 0;
-				if (t->existRecv[i] != 1) {	
-					MPI_Irecv(t->borders[i].data(), t->borders[i].size(), MPI_DOUBLE, oldMap[t->neighbors[i]], k*t->blockNumber * 6 + i, MPI_COMM_WORLD, &t->recvReq[i]);
-					MPI_Test(&t->recvReq[i], &flag_test, &st);
-					if (flag_test) {t->existRecv[i] = 1;}	
-				}
-									
-			}
-		
-	// Отправляем параметры задачи
 
-	MPI_Send(t->neighbors.data(), 6, MPI_INT, peer, 1018, MPI_COMM_WORLD);
-
-	MPI_Send(&t->blockNumber, 1, MPI_INT, peer, 1019, MPI_COMM_WORLD);
-	MPI_Send(&t->tasks_x, 1, MPI_INT, peer, 1020, MPI_COMM_WORLD);
-	MPI_Send(&t->localNumber, 1, MPI_INT, peer, 1021, MPI_COMM_WORLD);
-
-	MPI_Send(&t->flag, 1, MPI_INT, peer, 1022, MPI_COMM_WORLD); 
-	MPI_Send(&t->existRecv, 6, MPI_INT, peer, 1023, MPI_COMM_WORLD);
-	MPI_Send(&t->firstStart, 1, MPI_INT, peer, 1024, MPI_COMM_WORLD);
+	// РћС‚РїСЂР°РІР»СЏРµРј РїР°СЂР°РјРµС‚СЂС‹ Р·Р°РґР°С‡Рё
+	MPI_Send(t->neighbors.data(), 6, MPI_INT, peer, 1018, Comm);
+	MPI_Send(&t->blockNumber, 1, MPI_INT, peer, 1019, Comm);
+	MPI_Send(&t->tasks_x, 1, MPI_INT, peer, 1020, Comm);
+	MPI_Send(&t->localNumber, 1, MPI_INT, peer, 1021, Comm);
+	MPI_Send(&t->flag, 1, MPI_INT, peer, 1022, Comm); 
+	MPI_Send(&t->tasks_y, 1, MPI_INT, peer, 1023, Comm);
 
 	int sizes[14];
 	for (int j = 0; j < 6; j++)
 		sizes[j] = t->borders[j].size();
-	for (int j = 6; j < 12; j++) 
-		sizes[j] = t->shadowBorders[j-6].size();
+	for (int j = 0; j < 6; j++) 
+		sizes[j+6] = t->shadowBorders[j].size();
 	sizes[12] = t->oldU.size();
 	sizes[13] = t->numbersOfKU.size();
 			
-	MPI_Send(&sizes, 14, MPI_INT, peer, 1000, MPI_COMM_WORLD);
+	MPI_Send(&sizes, 14, MPI_INT, peer, 1000, Comm);
 
-	// Отправляем данные
+	// РћС‚РїСЂР°РІР»СЏРµРј РґР°РЅРЅС‹Рµ
 	for (int j = 0; j < 6; j++)
-		{MPI_Send(t->borders[j].data(), sizes[j], MPI_DOUBLE, peer, 1001 + j, MPI_COMM_WORLD);
-			/*for (int i = 0; i < t->borders[j].size(); i++)
-				printf("SEND %d::task %d:: b[%d][%d]::%lf\n",rank, t->blockNumber, j, i,  t->borders[j][i]);	*/
-		}
+		MPI_Send(t->borders[j].data(), sizes[j], MPI_DOUBLE, peer, 1001 + j, Comm);
+
 	for (int j = 0; j < 6; j++)
-		MPI_Send(t->shadowBorders[j].data(), sizes[j + 6], MPI_INT, peer, 1007 + j, MPI_COMM_WORLD);
+		MPI_Send(t->shadowBorders[j].data(), sizes[j + 6], MPI_INT, peer, 1007 + j, Comm);
 		
-	MPI_Send(t->oldU.data(), t->oldU.size(), MPI_DOUBLE, peer, 1013, MPI_COMM_WORLD);
-	MPI_Send(t->newU.data(), t->newU.size(), MPI_DOUBLE, peer, 1014, MPI_COMM_WORLD);
-	MPI_Send(t->F.data(), t->F.size(), MPI_DOUBLE, peer, 1015, MPI_COMM_WORLD);
-	MPI_Send(t->points.data(), t->points.size(), MPI_POINT, peer, 1016, MPI_COMM_WORLD);
-	MPI_Send(t->numbersOfKU.data(), t->numbersOfKU.size(), MPI_INT, peer, 1017, MPI_COMM_WORLD);
-	//free(t);
+	MPI_Send(t->oldU.data(), t->oldU.size(), MPI_DOUBLE, peer, 1013, Comm);
+	MPI_Send(t->newU.data(), t->newU.size(), MPI_DOUBLE, peer, 1014, Comm);
+	MPI_Send(t->F.data(), t->F.size(), MPI_DOUBLE, peer, 1015, Comm);
+	MPI_Send(t->points.data(), t->points.size(), MPI_POINT, peer, 1016, Comm);
+	MPI_Send(t->numbersOfKU.data(), t->numbersOfKU.size(), MPI_INT, peer, 1017, Comm);
+	//t->~Task();
 }
 
-void GenerateRecv(Task *t, int i)
+void GenerateRecv(Task *t, int i, MPI_Comm Comm)
 {
 	MPI_Status st;
 
-	MPI_Recv(t->neighbors.data(), 6, MPI_INT, i, 1018, MPI_COMM_WORLD, &st);
+	MPI_Recv(t->neighbors.data(), 6, MPI_INT, i, 1018, Comm, &st);
+	MPI_Recv(&t->blockNumber, 1, MPI_INT, i, 1019, Comm, &st);
+	MPI_Recv(&t->tasks_x, 1, MPI_INT, i, 1020, Comm, &st);
+	MPI_Recv(&t->localNumber, 1, MPI_INT, i, 1021, Comm, &st);
+	MPI_Recv(&t->flag, 1, MPI_INT, i, 1022, Comm, &st); 
+	MPI_Recv(&t->tasks_y, 1, MPI_INT, i, 1023, Comm, &st);
 
-	MPI_Recv(&t->blockNumber, 1, MPI_INT, i, 1019, MPI_COMM_WORLD, &st);
-	MPI_Recv(&t->tasks_x, 1, MPI_INT, i, 1020, MPI_COMM_WORLD, &st);
-	MPI_Recv(&t->localNumber, 1, MPI_INT, i, 1021, MPI_COMM_WORLD, &st);
-
-	MPI_Recv(&t->flag, 1, MPI_INT, i, 1022, MPI_COMM_WORLD, &st); 
-	MPI_Recv(&t->existRecv, 6, MPI_INT, i, 1023, MPI_COMM_WORLD, &st);
-	MPI_Recv(&t->firstStart, 1, MPI_INT, i, 1024, MPI_COMM_WORLD, &st);
-
-	// Cначала получаем массив размеров и выделяем память под задачу
+	// CРЅР°С‡Р°Р»Р° РїРѕР»СѓС‡Р°РµРј РјР°СЃСЃРёРІ СЂР°Р·РјРµСЂРѕРІ Рё РІС‹РґРµР»СЏРµРј РїР°РјСЏС‚СЊ РїРѕРґ Р·Р°РґР°С‡Сѓ
 	int sizes[14];
-	MPI_Recv(&sizes, 14, MPI_INT, i, 1000, MPI_COMM_WORLD, &st);				
+	MPI_Recv(&sizes, 14, MPI_INT, i, 1000, Comm, &st);				
 		
 	//printf("%d:: get task start %d from %d\n", rank, t->blockNumber, i);
 	/*for (int i = 0; i < 14; i++)
 		printf("%d::%d::%d\t",rank, i, sizes[i]);
 	printf("\n");*/
-	// Получаем данные
+	// РџРѕР»СѓС‡Р°РµРј РґР°РЅРЅС‹Рµ
 	for (int j = 0; j < 6; j++) {
 		t->borders[j].resize(sizes[j]);
-		//printf("B %d::::task %d:: %d::%d\n",rank, t->blockNumber, j, sizes[j]);
-		MPI_Recv(t->borders[j].data(), sizes[j], MPI_DOUBLE, i, 1001 + j, MPI_COMM_WORLD, &st);
-		/*for (int i = 0; i < t->borders[j].size(); i++)
-			printf("RECV %d::task %d:: b[%d][%d]::%lf\n",rank, t->blockNumber, j, i,  t->borders[j][i]);	*/		
+		MPI_Recv(t->borders[j].data(), sizes[j], MPI_DOUBLE, i, 1001 + j, Comm, &st);	
 	}
 	for (int j = 0; j < 6; j++) {
 		t->shadowBorders[j].resize(sizes[j + 6]);
-		//printf("S %d::task %d:: %d::%d\n",rank, t->blockNumber, j + 6, sizes[j + 6]);
-		MPI_Recv(t->shadowBorders[j].data(), sizes[j + 6], MPI_INT, i, 1007 + j, MPI_COMM_WORLD, &st);
+		MPI_Recv(t->shadowBorders[j].data(), sizes[j + 6], MPI_INT, i, 1007 + j, Comm, &st);
 	}
 
 	t->oldU.resize(sizes[12]);
@@ -540,12 +537,86 @@ void GenerateRecv(Task *t, int i)
 	t->points.resize(t->oldU.size());
 	t->numbersOfKU.resize(sizes[13]);
 
-	MPI_Recv(t->oldU.data(), t->oldU.size(), MPI_DOUBLE, i, 1013, MPI_COMM_WORLD, &st);
-	MPI_Recv(t->newU.data(), t->newU.size(), MPI_DOUBLE, i, 1014, MPI_COMM_WORLD, &st);
-	MPI_Recv(t->F.data(), t->F.size(), MPI_DOUBLE, i, 1015, MPI_COMM_WORLD, &st);
-	MPI_Recv(t->points.data(), t->points.size(), MPI_POINT, i, 1016, MPI_COMM_WORLD, &st);
-	MPI_Recv(t->numbersOfKU.data(), t->numbersOfKU.size(), MPI_INT, i, 1017, MPI_COMM_WORLD, &st);
+	MPI_Recv(t->oldU.data(), t->oldU.size(), MPI_DOUBLE, i, 1013, Comm, &st);
+	MPI_Recv(t->newU.data(), t->newU.size(), MPI_DOUBLE, i, 1014, Comm, &st);
+	MPI_Recv(t->F.data(), t->F.size(), MPI_DOUBLE, i, 1015, Comm, &st);
+	MPI_Recv(t->points.data(), t->points.size(), MPI_POINT, i, 1016, Comm, &st);
+	MPI_Recv(t->numbersOfKU.data(), t->numbersOfKU.size(), MPI_INT, i, 1017, Comm, &st);
 	
-	printf("%d:: get task %d from %d\n", rank, t->blockNumber, i);
+	fprintf(stderr,"%d:: get task %d from %d\n", rank, t->blockNumber, i);
 }
 
+void GenerateResult(MPI_Comm Comm)
+{
+	std::vector <double> res(size), globalR(size);
+	std::vector <unsigned int> time(size), timer(size);
+	std::vector <int> iterations(size), resIterations(size);
+	iterations[rank] = iteration;
+	res[rank] = residual;	
+	fprintf(stderr,"%d::generate result!\n", rank);
+	MPI_Allreduce(newResult.data(), globalRes.data(), newResult.size(), MPI_DOUBLE, MPI_SUM, Comm);
+	//MPI_Reduce(timer.data(), time.data(), time.size(), MPI_INT, MPI_SUM, 0, Comm);
+	MPI_Reduce(iterations.data(), resIterations.data(), resIterations.size(), MPI_INT, MPI_SUM, 0, Comm);
+	MPI_Reduce(res.data(), globalR.data(), res.size(), MPI_DOUBLE, MPI_SUM, 0, Comm);
+	
+	/*unsigned int allTime = 0;
+	for (int i = 0; i < size; i++)
+		if (allTime < time[i])
+			allTime = time[i];*/
+
+	// Р’С‹РІРѕРґ СЂРµР·СѓР»СЊС‚Р°С‚Р°
+	if (rank == 0)
+	{
+		printf("\n--------------------------------------------------------------------\n\n");
+		double sum = 0;
+		for (int i = 0; i < globalRes.size(); i++)
+		{
+			sum += (2. - globalRes[i])*(2. - globalRes[i]);
+			printf("%.14lf\n", globalRes[i]);
+		}
+		sum = sqrt(sum);
+		printf("||result|| = %.10e\n", sum);
+		//printf("dimention: %d\tcountOfProcess: %d\tallTime: %d\n\n",dim, size, allTime);
+		/*for (int i = 0; i < size; i++)
+			printf("rank %d::\ttime = %d;\tcountOfIter = %d;\tresidual = %e\n", i, time[i], resIterations[i], globalR[i]);*/
+		for (int i = 0; i < size; i++)
+			printf("rank %d::\tcountOfIter = %d;\tresidual = %e\n", i, resIterations[i], globalR[i]);
+		printf("\n--------------------------------------------------------------------\n");
+	}
+}
+void GenerateResultOfIteration(MPI_Comm reduceComm)
+{
+	double sum = 0;
+	// Р Р°СЃС‡С‘С‚ Р°Р±СЃРѕР»СЋС‚РЅРѕР№ РїРѕРіСЂРµС€РЅРѕСЃС‚Рё РјРµР¶РґСѓ С‚РµРєСѓС‰РёРј Рё РїСЂРµРґС‹РґСѓС‰РёРј СЂРµС€РµРЅРёСЏРјРё
+	for (int i = 0; i < newResult.size(); i++)
+		sum += (newResult[i] - oldResult[i])*(newResult[i] - oldResult[i]);
+	
+	MPI_Allreduce(&sum, &residual, 1, MPI_DOUBLE, MPI_SUM, reduceComm);
+	residual = sqrt(residual);		
+		
+	MPI_Allreduce(newResult.data(), globalRes.data(), newResult.size(), MPI_DOUBLE, MPI_SUM, reduceComm);
+
+	if (rank == 0) {			
+		// Р’С‹РІРѕРґ СЂРµР·СѓР»СЊС‚Р°С‚Р°
+		//if (iteration == 55){
+			printf("\n--------------------------------------------------------------------\n\n");
+			double sum = 0;
+			for (int i = 0; i < globalRes.size(); i++)
+			{
+				sum += (2. - globalRes[i])*(2. - globalRes[i]);
+				//printf("%d::%.14lf\n",i, globalRes[i]);
+				//printf("%.14lf\n",globalRes[i]);
+			}	
+			sum = sqrt(sum);
+			printf("||result|| = %.10e\n", sum);
+			printf("\n--------------------------------------------------------------------\n");
+		//}
+		printf("%d:: res = %e\n",rank, residual );
+	}
+}
+
+bool CheckConditions()
+{
+	if (residual > eps) return true;
+	else return false;
+}
