@@ -131,6 +131,21 @@ void FindSolution()
 	MPI_Isend(&exit, 1, MPI_INT, rank, 2001, currentComm, &s);
 	pthread_join(thrs[countOfWorkers], NULL);
 	fprintf(stderr,"%d::dispetcher close\n", rank);
+	while (numberOfConnection < countOfConnect) {
+		int cond, size_new;
+		MPI_Recv(&cond, 1, MPI_INT, rank, 2001, currentComm, &st);
+		if (rank == 0){
+			
+			size_old = size;
+			// Вычисляем новый размер и rаnk
+       			MPI_Comm_size(newComm, &size_new);
+	
+			cond = 0;
+			for(int k = size_old; k < size_new; k++) 
+				MPI_Send(&cond, 1, MPI_INT, k, 10000, newComm);	
+		}
+		server_new = false;
+	}
 	pthread_join(thrs[countOfWorkers+1], NULL);	
 	fprintf(stderr,"%d::mapController close\n", rank);	
 	pthread_join(thrs[countOfWorkers+2], NULL);	
