@@ -1,18 +1,19 @@
 #include "balance.cpp"
-
+std::ofstream fTime;
+#include <sstream>
 void FindSolution()
 {
-	// РђС‚СЂРёР±СѓС‚С‹ РїРѕС‚РѕРєР°
+	// Атрибуты потока
 	pthread_attr_t attrs;
 	
-	// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ Р°С‚СЂРёР±СѓС‚РѕРІ РїРѕС‚РѕРєР°
+	// Инициализация атрибутов потока
 	if (0 != pthread_attr_init(&attrs))
 	{
 		perror("Cannot initialize attributes");
 		abort();
 	};
 
-	// РЈСЃС‚Р°РЅРѕРІРєР° Р°С‚СЂРёР±СѓС‚Р° "РїСЂРёСЃРѕРµРґРёРЅС‘РЅРЅС‹Р№"
+	// Установка атрибута "присоединённый"
 	if (0 != pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE))
 	{
 		perror("Error in setting attributes");
@@ -22,13 +23,13 @@ void FindSolution()
 	MPI_Request s;
 	MPI_Status st;
 	int exit = -1;
-	// РџРѕСЂРѕР¶РґРµРЅРёРµ РґРёСЃРїРµС‚С‡РµСЂР°
+	// Порождение диспетчера
 	if (size != 0)
 		if (0 != pthread_create(&thrs[countOfWorkers], &attrs, dispatcher, &ids[countOfWorkers])) {
 			perror("Cannot create a thread");
 			abort();
 		}
-	// РџРѕСЂРѕР¶РґРµРЅРёРµ РєРѕРЅС‚СЂРѕР»Р»РµСЂР° РєР°СЂС‚
+	// Порождение контроллера карт
 	if (0 != pthread_create(&thrs[countOfWorkers+1], &attrs, mapController, &ids[countOfWorkers+1]))
 	{
 		perror("Cannot create a thread");
@@ -37,7 +38,7 @@ void FindSolution()
 	MPI_Comm_dup(currentComm, &serverComm);
 	MPI_Comm_dup(currentComm, &reduceComm);
 	MPI_Comm_dup(currentComm, &barrierComm);
-	// РџРѕСЂРѕР¶РґРµРЅРёРµ СЃРµСЂРІРµСЂР°
+	// Порождение сервера
 	if (0 != pthread_create(&thrs[countOfWorkers+2], &attrs, server, &ids[countOfWorkers+2]))
 	{
 		perror("Cannot create a thread");
@@ -45,35 +46,44 @@ void FindSolution()
 	}
 	std::vector<int> flags(size);
 	std::vector<int> globalFlags(size);
+	std::stringstream ss;
+    	ss << rank;
+	std::string nameFile = "Loading" + ss.str();
+	 nameFile += ".txt";
+	std::ofstream fLoading(nameFile );
 
 	for (iteration = 0; iteration < maxiter && CheckConditions(); iteration++)
 	{	
-		
 		if (rank == 0) printf("%d::  --------------------START ITERATION %d---------------------\n", rank, iteration);
 		for (auto &i : newResult) i = 0;
 		for (auto &i : oldResult) i = 0;
-		
-		while (!allTasks.empty()) {
-			
+		auto t_start = std::chrono::high_resolution_clock::now();
+		while (!allTasks.empty()) {			
 			Task *t = allTasks.front();
-			if(iteration != 0) t->ReceiveFromNeighbors(currentComm);				
+			if(iteration != 0) t->ReceiveFromNeighbors(currentComm);	
+			queueRecv.push(t);
+			allTasks.pop();			
+		}
+		
+		while (!queueRecv.empty()) {
+			Task *t = queueRecv.front();
+			if(iteration != 0) t->WaitBorders();
 			pthread_mutex_lock(&mutex_get_task);
 			currentTasks.push(t);
 			pthread_mutex_unlock(&mutex_get_task);
-			allTasks.pop();
-			
+			queueRecv.pop();			
 		}
-		
-		fprintf(stderr, "%d:: count of tasks = %d\n", rank, currentTasks.size());
 
-		// РџРѕСЂРѕР¶РґРµРЅРёРµ СЂР°Р±РѕС‡РёС… РїРѕС‚РѕРєРѕРІ
+		fprintf(stderr, "%d:: count of tasks = %d\n", rank, currentTasks.size());
+		
+		// Порождение рабочих потоков
 		for (int i = 0; i < countOfWorkers; i++)
 			if (0 != pthread_create(&thrs[i], &attrs, worker, &ids[i])) {
 				perror("Cannot create a thread");
 				abort();
 			}
 			
-		// РћР¶РёРґР°РЅРёРµ Р·Р°РІРµСЂС€РµРЅРёСЏ РїРѕСЂРѕР¶РґРµРЅРЅС‹С… РїРѕС‚РѕРєРѕРІ
+		// Ожидание завершения порожденных потоков
 		for (int i = 0; i < countOfWorkers; i++)
 			if (0 != pthread_join(thrs[i], NULL)) {
 				perror("Cannot join a thread");
@@ -87,12 +97,12 @@ void FindSolution()
 		MPI_Allreduce(flags.data(), globalFlags.data(), globalFlags.size(), MPI_INT, MPI_SUM, reduceComm);
 		for (int i = 0; i < globalFlags.size() && !change; i++)
 			if (globalFlags[i]) change = true;
-		// Р•СЃР»Рё РїСЂРѕРёСЃС…РѕРґРёР»Рѕ РёР·РјРµРЅРµРЅРёРµ РєРѕРјРјСѓРЅРёРєР°С‚РѕСЂР° РІ С…РѕРґРµ СЂР°Р±РѕС‚С‹ РїРѕС‚РѕРєРѕРІ
-		// С‚Рѕ РїРѕСЃС‹Р»Р°РµРј СЃРѕРѕР±С‰РµРЅРёРµ, С…Р°СЂР°РєС‚РµСЂРёР·СѓСЋС‰РµРµ Р·Р°РєСЂС‹С‚РёРµ СЃС‚Р°СЂРѕРіРѕ РєРѕРјРјСѓРЅРёРєР°С‚РѕСЂР°
+		// Если происходило изменение коммуникатора в ходе работы потоков
+		// то посылаем сообщение, характеризующее закрытие старого коммуникатора
 		if (change) {
-			
+			fprintf(stderr,"%d:: get to change communicator\n", rank);	
 			int cond = 4; 
-			// РћС‚РїСЂР°РІРєР° СЃРѕРѕР±С‰РµРЅРёСЏ Рѕ РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚Рё Р·Р°РєСЂС‹С‚СЊ СЃС‚Р°СЂС‹Р№ РєРѕРјРјСѓРЅРёРєР°С‚РѕСЂ			
+			// Отправка сообщения о необходимости закрыть старый коммуникатор			
 			MPI_Send(&cond, 1, MPI_INT, rank, 2001, currentComm);
 			fprintf(stderr,"%d::send to old_dispetcher sucsess\n", rank);
 			
@@ -106,16 +116,24 @@ void FindSolution()
 			MPI_Comm_dup(newComm, &reduceComm);
 			fprintf(stderr,"%d::dup reduce sucsess\n", rank);
 			MPI_Comm_dup(newComm, &barrierComm);
-			while (!changeComm); // СѓСЃР»РѕРІРЅР°СЏ РїРµСЂРµРјРµРЅРЅР°СЏ
+			while (!changeComm); 
 			currentComm = newComm;
 			flags.resize(size);
 			globalFlags.resize(size);
 			changeComm = false;
 			server_new = false;
-		}
-			
-		GenerateResultOfIteration(reduceComm);
+			if (rank == 0){
+				time ( &rawtime ); 
+				timeinfo = localtime ( &rawtime ); 
+				strftime (buffer,80,"%H:%M:%S",timeinfo); 
+				puts (buffer);
+				fTime << "new connection in " << buffer << "\n";
+			}
 
+		}
+		fprintf(stderr,"%d::get to generate result of iteration\n", rank);		
+		GenerateResultOfIteration(reduceComm);
+		
 		while (!queueRecv.empty()) {
 			Task *t = queueRecv.front();
 			t->SendToNeighbors(currentComm);
@@ -123,27 +141,31 @@ void FindSolution()
 			allTasks.push(t);
 			
 		}
-
+		auto t_end = std::chrono::high_resolution_clock::now();
 		if (rank == 0) {
 			printf("%d:: res = %e\n",rank, residual );
 			printf("%d:: --------------------FINISH ITERATION %d---------------------\n", rank, iteration);
 			
 		}
+		if (rank == 0){
+			fTime << "iteration " << iteration << "::  " << std::chrono::duration<double, std::milli>(t_end - t_start).count() << " ms\n";
+		}
+		fLoading << "iteration " << iteration << "::  " << allTasks.size() << "\ttasks\n";
 	}
-	MPI_Isend(&exit, 1, MPI_INT, rank, 1030, currentComm, &s);
-	MPI_Isend(&exit, 1, MPI_INT, rank, 2001, currentComm, &s);
+
+	MPI_Send(&exit, 1, MPI_INT, rank, 1030, currentComm);
+	MPI_Send(&exit, 1, MPI_INT, rank, 2001, currentComm);
 	pthread_join(thrs[countOfWorkers], NULL);
 	fprintf(stderr,"%d::dispetcher close\n", rank);
-	// Р•СЃР»Рё РїСЂРѕС†РµСЃСЃС‹ РїРѕРґСЃРѕРµРґРёРЅРёР»РёСЃСЊ РїРѕcР»Рµ РІСЃРµС… РІС‹С‡РёСЃР»РµРЅРёР№
-	
-	
+
+	// Если процессы подсоединились поcле всех вычислений	
 	while (numberOfConnection < countOfConnect) {
 		int cond, size_new;
 		MPI_Recv(&cond, 1, MPI_INT, rank, 2001, currentComm, &st);
 		if (rank == 0){
 			
 			size_old = size;
-			// Р’С‹С‡РёСЃР»СЏРµРј РЅРѕРІС‹Р№ СЂР°Р·РјРµСЂ Рё rР°nk
+			// Вычисляем новый размер и rаnk
        			MPI_Comm_size(newComm, &size_new);
 	
 			cond = 0;
@@ -157,13 +179,23 @@ void FindSolution()
 	fprintf(stderr,"%d::mapController close\n", rank);
 	pthread_join(thrs[countOfWorkers+2], NULL);
 	fprintf(stderr,"%d::server close\n", rank);
+	fLoading.close();
 	
-	// РћСЃРІРѕР±РѕР¶РґРµРЅРёРµ СЂРµСЃСѓСЂСЃРѕРІ, Р·Р°РЅРёРјР°РµРјС‹С… РѕРїРёСЃР°С‚РµР»РµРј Р°С‚СЂРёР±СѓС‚РѕРІ
-	//pthread_attr_destroy(&attrs);
+	// Освобождение ресурсов, занимаемых описателем атрибутов
+	pthread_attr_destroy(&attrs);
 }
 
 int main(int argc, char **argv)
 {
+	if (rank == 0){
+		fTime.open("time_server.txt");
+		time ( &rawtime ); 
+		timeinfo = localtime ( &rawtime ); 
+		strftime (buffer,80,"%H:%M:%S",timeinfo); 
+		puts (buffer);
+		fTime << "servers's processes start in " << buffer << "\n";
+	}
+
 	int provided = MPI_THREAD_SINGLE;
 	MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
 	if (provided != MPI_THREAD_MULTIPLE)	{
@@ -172,10 +204,10 @@ int main(int argc, char **argv)
 	}
 
 	MPI_Comm_rank(currentComm, &rank);
-	//РџРѕР»СѓС‡Р°РµРј РєРѕР»РёС‡РµСЃС‚РІРѕ СѓР·Р»РѕРІ
+	//Получаем количество узлов
 	MPI_Comm_size(currentComm, &size);
 
-	// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РјСЊСЋС‚РµРєСЃР°
+	// Инициализация мьютекса
 	pthread_mutexattr_t attr_get_task;
 	pthread_mutexattr_init(&attr_get_task);
 	pthread_mutex_init(&mutex_get_task, &attr_get_task);
@@ -197,5 +229,6 @@ int main(int argc, char **argv)
 	GenerateResult(currentComm);
 	
 	MPI_Finalize();
+	fTime.close();
 	return 0;
 }
