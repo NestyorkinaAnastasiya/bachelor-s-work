@@ -6,23 +6,20 @@ struct tm * timeinfo;
 char buffer [80];
 
 #define MAX_DATA 1000
-// Размер глобального списка задач
-int problemSize;
-// Переменные, необходимые для работы с потоками
+// id for threads
 int ids[11] = { 0,1,2,3,4,5,6,7,8,9,10 };
-// Четыре объекта типа "описатель потока"
+// descriptors for threads
 pthread_t thrs[11];
-// Текущий коммуникатор
+// Communicators
 MPI_Comm currentComm = MPI_COMM_WORLD;
-// Новый коммуникатор
 MPI_Comm newComm, serverComm, reduceComm, barrierComm;
 int changeComm = false;
 bool server_new = false;
 int condition = 0;
 int rank_old, size_old;
-// Число вычислительных потоков
+// Count of computational threads
 int countOfWorkers = 1;
-// Общее число потоков
+// Count of all threads
 int countOfThreads = 3;
 int numberOfConnection = 0;
 bool STOP = false;
@@ -30,21 +27,13 @@ std::queue<Task*> currentTasks, queueRecv;
 
 pthread_mutex_t mutex_get_task, mutex_set_task;
 
-bool GetTask(Task **currTask)
-{	
-	// Блокируем доступ других потоков для избежания ошибок
-	// в следствии некорректной работы с очередью
+bool GetTask(Task **currTask) {	
 	pthread_mutex_lock(&mutex_get_task);
-	// Если очередь задач пуста
-	if (currentTasks.empty())
-	{
-		// Снимаем замок
+	if (currentTasks.empty()) {
 		pthread_mutex_unlock(&mutex_get_task);
 		return false;
 	}
-	else
-	{
-		// Достаём задачу из очереди
+	else {
 		*currTask = currentTasks.front();
 		currentTasks.pop();
 	}
@@ -52,20 +41,16 @@ bool GetTask(Task **currTask)
 	return true;
 }
 
-// Функция вычислительного потока
-void* worker(void* me)
-{	
-	//Текущая задача
+// Computational thread
+void* worker(void* me) {	
 	Task *currTask;
 	int countOfProcess = size;
-	// Пока есть свои подзадачи - выполняем свои
+	// Execution of own tasks
 	while (GetTask(&currTask)) {
-		// Если происходит изменение коммуникатора, то это никак не влияет 
-		// на решения подзадач из очереди, поэтому работа продолжается в том же режиме
-	
+		// It doesn't matter what communicator is current
 		currTask->Run();
 	
-		// Формируем очередь выполненных задач
+		// Creating the queue of executed tasks
 		pthread_mutex_lock(&mutex_set_task);
 		queueRecv.push(currTask);
 		pthread_mutex_unlock(&mutex_set_task);
@@ -73,17 +58,15 @@ void* worker(void* me)
 	
 	MPI_Comm Comm = currentComm;
 	
-	// В случае подсоединения группы процессов, нет смысла запрашивать у них задачи,
-	// их очередь подзадач пуста
-	
+	// If new ranks comes, their queue is empty	
 	int  exitTask = 0;
 	bool message = false;
 	int sign = 1, id, k = 0;
 	bool retry = false;
-	// Запрашиваем по одной задаче от каждого узла кроме самого себя
-	for (int i = 0; i < countOfProcess - 1; i++)
-	{	
-		// Если не идёт запрос у того же узла, номер соседнего узла
+	
+	// Task request from another ranks
+	for (int i = 0; i < countOfProcess - 1; i++) {	
+		// If request from next rank
 		if(!retry){
 			if (sign == 1) {
 				sign = -1;
@@ -96,28 +79,25 @@ void* worker(void* me)
 			if (id > size - 1) id -= countOfProcess;
 			else if (id < 0) id += countOfProcess;	
 		}
-		// Если происходит изменение коммуникатора
+		
 		if(changeComm) Comm = newComm;
 
-		// Отправляем запрос на получение задачи 
+		// Send task request
 		condition = 0;
 		MPI_Send(&condition, 1, MPI_INT, id, 2001, Comm);
 		MPI_Status st;
-		// Получаем результат запроса в виде информации о том,
-		// есть ли задача у узла или нет
+		// Get information about task existing
 		MPI_Recv(&exitTask, 1, MPI_INT, id, 2002, Comm, &st);
 
-		// Если такая задача есть, то получаем данные задачи
-		if (exitTask)
-		{
+		// If task exist, worker recieve and execute it
+		if (exitTask) {
 			Task *t = new Task;
 			pthread_mutex_lock(&mutex_set_task);
 			GenerateRecv(t, id, Comm);
 			queueRecv.push(t);
 			pthread_mutex_unlock(&mutex_set_task);		
-			// Запускаем полученную задачу
 			t->Run();
-			// У этого узла могут существовать ещё подзадачи
+			// This rank can have new task for work
 			retry = true;
 			i--;
 		}
@@ -127,78 +107,28 @@ void* worker(void* me)
 	return 0;
 }
 
-//Диспетчер для работы в старом коммуникаторе
-void* dispatcher_old(void* me)
-{
-	fprintf (stderr,"%d::dispetcher_old run\n", rank);
-	Task *t;
-	int cond; 
-	bool close = false;
-	while(!close)
-	{
-		MPI_Status st;
-		// Получаем запрос от любого узла
-		MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 2001, currentComm, &st);
-
-		// Если это запрос о получении задачи
-		if (cond == 0)
-		{
-			// Получаем номер этого узла
-			int peer = st.MPI_SOURCE;
-			// Флаг ответа на то, есть задачи в узле, или нет
-			int send = 0;
-			// Если в очереди есть задача, получаем её
-			if (GetTask(&t)) {
-				send = 1;	
-				// Отправляем сообщение о том, что можем отправить задачу
-				MPI_Send(&send, 1, MPI_INT, peer, 2002, currentComm);
-
-				// Отправляем своё будущее расположение всем процессам 
-				for (int j = 0; j < size; j++) {
-					if (j != rank) {
-						MPI_Send(&t->blockNumber, 1, MPI_INT, j, 1030, newComm); 
-						MPI_Send(&peer, 1, MPI_INT, j, 1031, newComm); 
-					}
-					else map[t->blockNumber] = peer;
-				}
-				
-				GenerateSend(t, peer, currentComm);
-			} // Отправляем сообщение о том, что задачи кончились
-			else MPI_Send(&send, 1, MPI_INT, peer, 2002, currentComm);
-		} // Сообщение о необходимости закрыть поток
-		else if (cond == 4) close = true;
-	}
-	fprintf (stderr,"%d:: dispetcher_old close\n",rank);
-	
-	return 0;
-}
-
-// Диспетчер
-// (отвечает за пересылку задач другим узлам)
-void* dispatcher(void* me)
-{
+// Dispatcher
+void* dispatcher(void* me) {
 	MPI_Comm Comm = currentComm;
 	Task *t;
 	int cond;
 	bool close = false;
-	while(!close)
-	{
+	while(!close) {
 		MPI_Status st;
-		// Получаем запрос от любого узла
+		// Get message from any ranks
 		MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 2001, Comm , &st);
-		// Состояние передачи информации о подзадаче
+		// Task request
 		if (cond == 0) {
-			// Получаем номер этого узла
+			// reciever rank
 			int peer = st.MPI_SOURCE;
-			// Флаг ответа на то, есть задачи в узле, или нет
 			int send = 0;
-			// Если в очереди есть задача, получаем её
+			// Try get task
 			if (GetTask(&t)) {
 				send = 1;	
-				// Отправляем сообщение о том, что можем отправить задачу
+				// Send the message about task existing 
 				MPI_Send(&send, 1, MPI_INT, peer, 2002, Comm);
 
-				// Отправляем своё будущее расположение всем процессам 
+				// Send the future task place to all ranks 
 				for (int j = 0; j < size; j++) {
 					if (j != rank) {
 						MPI_Send(&t->blockNumber, 1, MPI_INT, j, 1030, Comm); 
@@ -207,27 +137,25 @@ void* dispatcher(void* me)
 					else map[t->blockNumber] = peer;
 				}
 				GenerateSend(t, peer, Comm);
-			} // Иначе отправляем сообщение о том, что задачи кончились
+			} // Send the message about task failure
 			else MPI_Send(&send, 1, MPI_INT, peer, 2002, Comm);
-		} // Состояние смены коммуникатора
+		} // Communicator is changing
 		else if (cond == 1) {
 			rank_old = rank;
 			size_old = size;
 			
-			// Начинать менять коммуникаторы необходимо одновременно,
-			// чтобы не было разхождений в коммуникаторах при отправке карт
+			// Communicators should be changed in single time because of map control
 			MPI_Barrier(currentComm);
 			
 			MPI_Request req;
 			cond = -10;
-			// Отправка сообщения контроллеру карт о смене коммуникатора
+			// Message to mapController about communicator changing
 			MPI_Send(&cond, 1, MPI_INT, rank, 1030, Comm);			
-			// Вычисляем новый размер и rаnk
-                     	Comm = newComm;		
+            Comm = newComm;		
 			MPI_Comm_rank(Comm, &rank);
-                      	MPI_Comm_size(Comm, &size);
-			changeComm = true;	
-			// Отправляем текущую конфигурацию подзадач
+            MPI_Comm_size(Comm, &size);
+			changeComm = true;	//SEND
+			// Sending current places of tasks to new ranks
 			if (rank == 0) { 
 				int sizeOfMap = map.size();
 				for(int k = size_old; k < size; k++) {
@@ -249,37 +177,70 @@ void* dispatcher(void* me)
 				abort();
 			}
 
-			// Порождение диспетчера, работающего в старом коммуникаторе
+			// Create dispatcher which is working in old communicator
 			if(0!=pthread_create(&thrs[countOfWorkers+3], &attrs, dispatcher_old, &ids[countOfWorkers+3]))
        			{
       		         	perror("Cannot create a thread");
               			abort();
       			}	
 
-		} // Состояние завершения работы потока
+		} // Close dispatcher 
 		else if (cond == -1) close = true;	
 	}	
 	return 0;
 }
 
-void* mapController(void* me)
-{
+// Dispatcher for work in old communicator (only tasks sending) 
+void* dispatcher_old(void* me) {
+	fprintf (stderr,"%d::dispetcher_old run\n", rank);
+	Task *t;
+	int cond; 
+	bool close = false;
+	while(!close) {
+		MPI_Status st;
+		MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 2001, currentComm, &st);
+		if (cond == 0) {
+			int peer = st.MPI_SOURCE;
+			int send = 0;
+			if (GetTask(&t)) {
+				send = 1;	
+				MPI_Send(&send, 1, MPI_INT, peer, 2002, currentComm);
+
+				for (int j = 0; j < size; j++) {
+					if (j != rank) {
+						MPI_Send(&t->blockNumber, 1, MPI_INT, j, 1030, newComm); 
+						MPI_Send(&peer, 1, MPI_INT, j, 1031, newComm); 
+					}
+					else map[t->blockNumber] = peer;
+				}
+				
+				GenerateSend(t, peer, currentComm);
+			} 
+			else MPI_Send(&send, 1, MPI_INT, peer, 2002, currentComm);
+		} 
+		else if (cond == 4) close = true;
+	}
+	fprintf (stderr,"%d:: dispetcher_old close\n",rank);
+	
+	return 0;
+}
+
+void* mapController(void* me) {
 	MPI_Comm Comm = currentComm;
 	MPI_Status st;
 	bool close = false;
 	int map_id, rank_id;
 	while (!close) {
 		MPI_Recv(&map_id, 1, MPI_INT, MPI_ANY_SOURCE, 1030, Comm, &st);
-		// Состояние изменения месторасположения подзадачи		
+		// Task place was changed	
 		if (map_id >= 0) {
-			// Получаем номер этого узла
 			int peer = st.MPI_SOURCE;
 			MPI_Recv(&rank_id, 1, MPI_INT, peer, 1031, Comm, &st);
 			map[map_id] = rank_id;
 		}
-		// Состояние завершения работы потока
+		// Close mapController
 		else if (map_id == -1) close = true;
-		// Состояние смены коммуникатора
+		// Communicator changing 
 		else if (map_id == -10) Comm = newComm;
 	}
 	return 0;
@@ -292,7 +253,7 @@ void* server(void *me)
 	char port_name[MPI_MAX_PORT_NAME];
 	int old_size, new_size;	
 	
-	// Открытие порта
+	// Open port
 	if (rank == 0)
 	{
 		MPI_Open_port(MPI_INFO_NULL, port_name);
@@ -301,35 +262,33 @@ void* server(void *me)
 			fPort << port_name[i];
 		fPort.close();
 	}
-	// Ожидание и обработка определённого чила подсоединений
 	for (; numberOfConnection < countOfConnect; )
 	{
-		// Ожидание момента, пока старое подключение не завершится
-		while(server_new);
+		// The previous connection must be finished
+		while(server_new); //RECV
 		old_size = size;
 		
-		// Ожидание подсоединения новой группы процессов
+		// Waiting for new ranks
 		MPI_Comm_accept(port_name, MPI_INFO_NULL, 0, serverComm, &client);
-		// Создание нового коммуникатора, объединяющего две группы процессов
+		// Creating new communicator for joint ranks group
 		MPI_Intercomm_merge(client, false, &newComm);
               	server_new = true;
 		MPI_Comm_size(newComm, &new_size);
 		MPI_Request req;
 		int message = 1;
 		numberOfConnection++;
-		// Передача подсоединённой группе процессов информации о том, сколько
-		// подключений уже было совершено
+		// send to new ranks information about connections count
 		if (rank == 0) 
 			for(int k = old_size; k < new_size; k++) 
 				MPI_Send(&numberOfConnection, 1, MPI_INT, k, 10002, newComm);
 	
-		// Отправка сообщения диспетчеру о смене коммуникатора
+		// Send to dispatcher message about new communicator
 		MPI_Send(&message, 1, MPI_INT, rank, 2001, currentComm);
 	}
 	return 0;
 }
 
-// Вывод задачи :			pthread_mutex_lock(&mutex);
+// Г‚Г»ГўГ®Г¤ Г§Г Г¤Г Г·ГЁ :			pthread_mutex_lock(&mutex);
 				/*printf("%d:: block = %d, lock = %d, tpp = %d, f = %d",rank,t->blockNumber,t->localNumber, t->tasks_x, t->flag);
 				printf("neighbors: %d %d %d %d %d %d\n", t->neighbors[0], t->neighbors[1],t->neighbors[2],t->neighbors[3],t->neighbors[4],t->neighbors[5]);
 				
