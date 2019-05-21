@@ -1,8 +1,17 @@
 #include "library.h"
-// Computational thread
-void* worker(void* me) {
+int GetRank(int &sign, int &k, int countOfProcess) {
+	if (sign == 1) {
+		sign = -1;
+		k++;
+	}
+	else sign = 1;
+	int id = rank + sign * k;
+	if (id > countOfProcess - 1) id -= countOfProcess;
+	else if (id < 0) id += countOfProcess;
+	return id;
+}
+void ExecuteOwnTasks() {
 	ITask *currTask;
-	int countOfProcess = size;
 	// Execution of own tasks
 	while (GetTask(&currTask)) {
 		// It doesn't matter what communicator is current
@@ -12,54 +21,101 @@ void* worker(void* me) {
 		queueRecv.push(currTask);
 		pthread_mutex_unlock(&mutex_set_task);
 	}
+}
+void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry) {
+	// Send task request
+	int existTask = 0;
+	MPI_Send(&existTask, 1, MPI_INT, id, 2001, Comm);
+	MPI_Status st;
+	// Get information about task existing
+	MPI_Recv(&existTask, 1, MPI_INT, id, 2002, Comm, &st);
 
-	MPI_Comm Comm = currentComm;
-
-	// If new ranks comes, their queue is empty	
-	int  exitTask = 0;
-	bool message = false;
-	int sign = 1, id, k = 0;
-	bool retry = false;
-
-	// Task request from another ranks
-	for (int i = 0; i < countOfProcess - 1; i++) {
-		// If request from next rank
-		if (!retry) {
-			if (sign == 1) {
-				sign = -1;
-				k++;
-			}
-			else sign = 1;
-			id = rank + sign * k;
-			if (id > countOfProcess - 1) id -= countOfProcess;
-			else if (id < 0) id += countOfProcess;
-		}
-
-		if (changeComm) {
-			Comm = newComm; // как понять различия между?
-		}
-
-		// Send task request
-		condition = 0;
-		MPI_Send(&condition, 1, MPI_INT, id, 2001, Comm);
-		MPI_Status st;
-		// Get information about task existing
-		MPI_Recv(&exitTask, 1, MPI_INT, id, 2002, Comm, &st);
-
-		// If task exist, worker recieve and execute it
-		if (exitTask) {
-			ITask *t = new Task;
-			pthread_mutex_lock(&mutex_set_task);
-			GenerateRecv(t, id, Comm);
-			queueRecv.push(t);
-			pthread_mutex_unlock(&mutex_set_task);
-			t->Run();
-			// This rank can have new task for work
-			retry = true;
-			i--;
-		}
-		else retry = false;
+	// If task exist, worker recieve and execute it
+	if (exitTask) {
+		ITask *t = new Task;
+		pthread_mutex_lock(&mutex_set_task);
+		t->GenerateRecv(id, Comm);
+		queueRecv.push(t);
+		pthread_mutex_unlock(&mutex_set_task);
+		t->Run();
+		// This rank can have new task for work
+		retry = true;
 	}
-
+	else retry = false;
+}
+void ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
+	int message = 1;
+	MPI_Request req;
+	for (int i = 0; i < newSize; i++)
+		MPI_ISend(&message, 1, MPI_INT, i, 2001, Comm, &req);
+	Comm = newComm;
+	newSize = size;
+}
+// Computational thread
+void* worker(void* me) {
+	bool close = false;
+	MPI_Status st;
+	MPI_Request req;
+	MPI_Comm Comm;
+	bool flag;
+	MPI_IRecv(&message, 1, MPI_INT, rank, 1997, Comm, &req);
+	int cond;
+	// Get message from own rank
+	int countOfProcess, newSize = size;
+	int message;
+	Comm = currentComm;
+	while (!close) {
+		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, Comm, &st);
+		if (cond == 1) {
+			ExecuteOwnTasks();
+			countOfProcess = newSize;
+			// If new ranks comes, their queue is empty	
+			int sign = 1, id, k = 0;
+			bool retry = false;
+			// Task request from another ranks
+			for (int i = 0; i < countOfProcess - 1; i++) {
+				// If request from next rank
+				if (!retry)	id = GetRank(sign, k, countOfProcess);
+				MPI_Test(&req, &flag, &st);
+				if (flag) {
+					ChangeCommunicator(Comm, newSize);
+					MPI_IRecv(&message, 1, MPI_INT, rank, 1997, Comm, &req);
+					flag = false;
+				}
+				ExecuteOtherTask(Comm, id, retry);
+				if (retry) i--;
+			}
+			MPI_Send(&cond, 1, MPI_INT, rank, 1999, Comm);
+		}
+		else if (cond == -1) close = true;
+		//else if (cond == 2) ChangeCommunicator(Comm, newSize);
+	}
 	return 0;
+}
+void StartWork() {
+	MPI_Status st;
+	MPI_Request req;
+	int cond = 1;
+	for (int i = 0; i < countOfWorkers; i++)
+		MPI_ISend(&cond, 1, MPI_INT, rank, 1999, Comm, &req);
+	for (int i = 0; i < countOfWorkers; i++)
+		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, Comm);
+	
+	bool change = false;
+	flags[rank] = changeComm;
+	// If any rank changes communicator
+	MPI_Allreduce(flags.data(), globalFlags.data(), globalFlags.size(), MPI_INT, MPI_SUM, reduceComm);
+
+	// Clear the memory
+	while (!sendedTasks.empty()) {
+		Task *t = sendedTasks.front();
+		t->Clear();
+		sendedTasks.pop();
+	}
+	int count = 0;
+	for (int i = 0; i < globalFlags.size(); i++)
+		if (globalFlags[i]) count++;
+	if (count == globalFlags.size())
+		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, newComm);
+	fprintf(stderr, "%d:: work has done\n", rank);
 }

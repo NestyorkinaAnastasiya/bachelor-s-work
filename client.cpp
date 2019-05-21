@@ -2,17 +2,15 @@
 client = true;
 std::ofstream fTime;
 void FindSolution() {
-	MPI_Request s;
 	MPI_Status st;
-	int exit = -1;
-	std::vector<int> flags(size);
-	std::vector<int> globalFlags(size);
 	std::stringstream ss;
 	ss << rank;
 	std::string nameFile = "Loading" + ss.str();
 	nameFile += ".txt";
 	std::ofstream fLoading(nameFile);
+
 	CreateLibraryComponents();
+
 	for (iteration = 0; iteration < maxiter && CheckConditions(); iteration++) {
 		/* if (rank_old == 0)*/ printf("%d::  --------------------START ITERATION %d---------------------\n", rank, iteration);
 		for (auto &i : newResult) i = 0;
@@ -35,20 +33,8 @@ void FindSolution() {
 		}
 		fprintf(stderr, "%d:: count of tasks = %d\n", rank, currentTasks.size());
 
-		// Create computational treads
-		for (int i = 0; i < countOfWorkers; i++)
-			if (0 != pthread_create(&thrs[i], &attrs, worker, &ids[i])) {
-				perror("Cannot create a thread");
-				abort();
-			}
-		// Wait computational threads
-		for (int i = 0; i < countOfWorkers; i++)
-			if (0 != pthread_join(thrs[i], NULL)) {
-				perror("Cannot join a thread");
-				abort();
-			}
+		StartWork();
 
-		fprintf(stderr, "%d:: workers closed\n", rank);
 		if (client)
 			MPI_Recv(&iteration, 1, MPI_INT, 0, 10005, currentComm, &st);
 		//ChangeCommunicator();
@@ -63,27 +49,8 @@ void FindSolution() {
 		fLoading << "iteration " << iteration << "::  " << allTasks.size() << "\ttasks\n";
 		if (rank_old == 0) printf("%d:: --------------------FINISH ITERATION %d---------------------\n", rank, iteration);
 	}
-
-	MPI_Isend(&exit, 1, MPI_INT, rank, 1030, currentComm, &s);
-	MPI_Isend(&exit, 1, MPI_INT, rank, 2001, currentComm, &s);
-	pthread_join(thrs[countOfWorkers], NULL);
-	fprintf(stderr, "%d::dispetcher close\n", rank);
-	while (numberOfConnection < countOfConnect) {
-		int cond, size_new;
-		MPI_Recv(&cond, 1, MPI_INT, rank, 2001, currentComm, &st);
-		if (rank == 0) {
-			size_old = size;
-			MPI_Comm_size(newComm, &size_new);
-			cond = 0;
-			for (int k = size_old; k < size_new; k++)
-				MPI_Send(&cond, 1, MPI_INT, k, 10000, newComm);
-		}
-		server_new = false;
-	}
-	pthread_join(thrs[countOfWorkers + 1], NULL);
-	fprintf(stderr, "%d::mapController close\n", rank);
-	pthread_join(thrs[countOfWorkers + 2], NULL);
-	pthread_attr_destroy(&attrs);
+	CloseLibraryComponents();
+	
 	fLoading.close();
 }
 

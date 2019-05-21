@@ -2,12 +2,13 @@
 // Dispatcher for work in old communicator (only tasks sending) 
 void* dispatcher_old(void* me) {
 	fprintf(stderr, "%d::dispetcher_old run\n", rank);
+	existOldDispatcher = true;
 	MPI_Request req;
 	ITask *t;
-	int cond;
+	int cond = 2;
+	for (int i = 0; i < countOfWorkers; i++)
+		MPI_ISend(&cond, 1, MPI_INT, rank_old, 1997, currentComm, &req);
 	bool close = false;
-	bool dup = true;
-	//while (!close) {
 	for (int i = 0; i < size_old * countOfWorkers && !close; ) {
 		MPI_Status st;
 		MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 2001, currentComm, &st);
@@ -26,31 +27,31 @@ void* dispatcher_old(void* me) {
 					else map[t->blockNumber] = peer;
 				}
 
-				GenerateSend(t, peer, currentComm);
+				t->GenerateSend(peer, currentComm);
 				sendedTasks.push(t);
 			}
 			else MPI_Send(&send, 1, MPI_INT, peer, 2002, currentComm);
 		}
-		else if (cond == 1) {
-			i++;
-		}
-		else if (cond == 4) {
-			close = true;
-		}
+		else if (cond == 1) { i++; }
+		else if (cond == 4) { close = true;	}
 	}
 	
 	MPI_Comm_dup(newComm, &serverComm);
 	MPI_Comm_dup(newComm, &reduceComm);
+	// Flags should be changed in single time
+	MPI_Barrier(currentComm);
 	currentComm = newComm;
 	flags.resize(size);
 	globalFlags.resize(size);
-	changeComm = false;
 	
 	MPI_Barrier(reduceComm);
-	int k = pthread_cond_signal(&comunicator_cond);
-
-	//////////дслни
+	if (close == true) cond = -1;
+	else cond = 1;
+	MPI_Isend(&cond, 1, MPI_INT, rank, 1999, currentComm, &req);
+	MPI_Send(&cond, 1, MPI_INT, rank, 1998, currentComm);
+	changeComm = false;
 	fprintf(stderr, "%d:: dispetcher_old close\n", rank);
+	existOldDispatcher = false;
 
 	return 0;
 }
@@ -84,7 +85,7 @@ void* dispatcher(void* me) {
 					}
 					else map[t->blockNumber] = peer;
 				}
-				GenerateSend(t, peer, Comm);
+				t->GenerateSend(peer, Comm);
 				sendedTasks.push(t);
 			} // Send the message about task failure
 			else MPI_Send(&send, 1, MPI_INT, peer, 2002, Comm);

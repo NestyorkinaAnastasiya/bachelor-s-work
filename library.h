@@ -29,6 +29,9 @@ pthread_t thrs[11];
 // Communicators
 MPI_Comm currentComm = MPI_COMM_WORLD;
 MPI_Comm oldComm, newComm, serverComm, reduceComm;
+
+std::vector<int> flags;
+std::vector<int> globalFlags;
 int changeComm = false;
 bool server_new = false;
 int condition = 0;
@@ -40,11 +43,12 @@ int countOfThreads = 3;
 int numberOfConnection = 0;
 bool STOP = false;
 bool client = false;
+bool existOldDispatcher = false;
 // Flag for user
 
 pthread_mutex_t mutex_get_task, mutex_set_task;
 pthread_mutexattr_t attr_set_task, attr_get_task;
-pthread_attr_t attrs_dispatcher, attrs_server, attrs_mapController;
+pthread_attr_t attrs_dispatcher, attrs_server, attrs_mapController, attrs_workers;
 pthread_cond_t server_cond, comunicator_cond;
 pthread_mutex_t server_mutexcond, comunicator_mutexcond;
 
@@ -54,6 +58,8 @@ public:
 	int blockNumber;
 	void virtual Run() = 0;
 	void virtual Clear() = 0;
+	void virtual GenerateRecv(int sender, MPI_Comm Comm) = 0;
+	void virtual GenerateSend(int reciever, MPI_Comm Comm) = 0;
 };
 
 bool GetTask(ITask **currTask) {
@@ -82,4 +88,5 @@ void* mapController(void* me);
 void* server(void *me);
 void LibraryInitialize();
 void CreateLibraryComponents();
-void ChangeCommunicator();
+void StartWork();
+void CloseLibraryComponents();

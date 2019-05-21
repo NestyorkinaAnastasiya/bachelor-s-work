@@ -8,7 +8,8 @@ void LibraryInitialize() {
 	}
 	MPI_Comm_rank(currentComm, &rank);
 	MPI_Comm_size(currentComm, &size);
-
+	flags.resize(size);
+	globalFlags.resize(size);
 	pthread_mutexattr_init(&attr_get_task);
 	pthread_mutex_init(&mutex_get_task, &attr_get_task);	
 	pthread_mutexattr_init(&attr_set_task);
@@ -19,6 +20,14 @@ void LibraryInitialize() {
 	pthread_cond_init(&server_cond, NULL);
 	pthread_cond_init(&comunicator_cond, NULL);
 
+	if (0 != pthread_attr_init(&attrs_workers)) {
+		perror("Cannot initialize attributes");
+		abort();
+	};
+	if (0 != pthread_attr_setdetachstate(&attrs_workers, PTHREAD_CREATE_DETACHED)) {
+		perror("Error in setting attributes");
+		abort();
+	}
 	if (0 != pthread_attr_init(&attrs_dispatcher)) {
 		perror("Cannot initialize attributes");
 		abort();
@@ -67,6 +76,49 @@ void CreateLibraryComponents()
 			abort();
 		}
 	}
+	// Create computational treads
+	for (int i = 0; i < countOfWorkers; i++)
+		if (0 != pthread_create(&thrs[i], &attrs_workers, worker, &ids[i])) {
+			perror("Cannot create a thread");
+			abort();
+		}
+}
+void CloseLibraryComponents() 
+{
+	MPI_Request s;
+	int exit = -1;
+	MPI_Isend(&exit, 1, MPI_INT, rank, 1999, currentComm, &s);
+	MPI_Isend(&exit, 1, MPI_INT, rank, 1030, currentComm, &s);
+	if (existOldDispatcher) {
+		MPI_Isend(&exit, 1, MPI_INT, rank, 2001, currentComm, &s);
+	}
+	MPI_Isend(&exit, 1, MPI_INT, rank, 2001, currentComm, &s);
+	pthread_join(thrs[countOfWorkers], NULL);
+	fprintf(stderr, "%d::dispetcher close\n", rank);
+	while (numberOfConnection < countOfConnect) {
+		int cond, size_new;
+		MPI_Recv(&cond, 1, MPI_INT, rank, 2001, currentComm, &st);
+		if (rank == 0) {
+			size_old = size;
+			MPI_Comm_size(newComm, &size_new);
+			cond = 0;
+			for (int k = size_old; k < size_new; k++)
+				MPI_Send(&cond, 1, MPI_INT, k, 10000, newComm);
+		}
+		server_new = false;
+	}
+	// Wait computational threads
+	for (int i = 0; i < countOfWorkers; i++)
+		pthread_join(thrs[i], NULL));
+	pthread_join(thrs[countOfWorkers + 1], NULL);
+	fprintf(stderr, "%d::mapController close\n", rank);
+	pthread_join(thrs[countOfWorkers + 2], NULL);
+	fprintf(stderr, "%d::server close\n", rank);
+
+	pthread_attr_destroy(&attrs_dispatcher);
+	pthread_attr_destroy(&attrs_server);
+	pthread_attr_destroy(&attrs_mapController);
+	pthread_attr_destroy(&attrs_workers);
 }
 /*
 void ChangeCommunicator() {

@@ -1,19 +1,15 @@
 #include "task.cpp"
 std::ofstream fTime;
-void FindSolution() {
-	
-	double sum;
-	MPI_Request s;
+void FindSolution() {	
 	MPI_Status st;
-	int exit = -1;
 	
-	std::vector<int> flags(size);
-	std::vector<int> globalFlags(size);
 	std::stringstream ss;
 	ss << rank;
 	std::string nameFile = "Loading" + ss.str();
 	nameFile += ".txt";
 	std::ofstream fLoading(nameFile);
+
+	CreateLibraryComponents();
 
 	for (iteration = 0; iteration < maxiter && CheckConditions(); iteration++) {
 		if (rank == 0) printf("%d::  --------------------START ITERATION %d---------------------\n", rank, iteration);
@@ -37,22 +33,9 @@ void FindSolution() {
 		}
 
 		fprintf(stderr, "%d:: count of tasks = %d\n", rank, currentTasks.size());
+		
+		StartWork();
 
-		// Create computational threads
-		for (int i = 0; i < countOfWorkers; i++)
-			if (0 != pthread_create(&thrs[i], &attrs, worker, &ids[i])) {
-				perror("Cannot create a thread");
-				abort();
-			}
-
-		// Wait computational threads
-		for (int i = 0; i < countOfWorkers; i++)
-			if (0 != pthread_join(thrs[i], NULL)) {
-				perror("Cannot join a thread");
-				abort();
-			}
-
-		fprintf(stderr, "%d::workers closed\n", rank);
 		/*тут было оно*/
 		if (changeExist)
 		{
@@ -81,34 +64,9 @@ void FindSolution() {
 			fTime << "iteration " << iteration << "::  " << std::chrono::duration<double, std::milli>(t_end - t_start).count() << " ms\n";
 		}
 		fLoading << "iteration " << iteration << "::  " << allTasks.size() << "\ttasks\n";
-	}
-
-	MPI_Send(&exit, 1, MPI_INT, rank, 1030, currentComm);
-	MPI_Send(&exit, 1, MPI_INT, rank, 2001, currentComm);
-	pthread_join(thrs[countOfWorkers], NULL);
-	fprintf(stderr, "%d::dispetcher close\n", rank);
-
-	// If ranks connected after all computing
-	while (numberOfConnection < countOfConnect) {
-		int cond, size_new;
-		MPI_Recv(&cond, 1, MPI_INT, rank, 2001, currentComm, &st);
-		if (rank == 0) {
-			size_old = size;
-			MPI_Comm_size(newComm, &size_new);
-
-			cond = 0;
-			for (int k = size_old; k < size_new; k++)
-				MPI_Send(&cond, 1, MPI_INT, k, 10000, newComm);
-		}
-		server_new = false;
-	}
-
-	pthread_join(thrs[countOfWorkers + 1], NULL);
-	fprintf(stderr, "%d::mapController close\n", rank);
-	pthread_join(thrs[countOfWorkers + 2], NULL);
-	fprintf(stderr, "%d::server close\n", rank);
+	}	
+	CloseLibraryComponents();
 	fLoading.close();
-	pthread_attr_destroy(&attrs);
 }
 
 int main(int argc, char **argv) {
@@ -122,9 +80,6 @@ int main(int argc, char **argv) {
 	
 	GenerateBasicConcepts();
 	GenerateQueueOfTask();
-
-	CreateLibraryComponents();
-
 	std::vector<int> tmp(map.size());
 	MPI_Allreduce(map.data(), tmp.data(), map.size(), MPI_INT, MPI_SUM, currentComm);
 	map = tmp;

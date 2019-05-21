@@ -1,24 +1,26 @@
 #include "library.h"
-void* server(void *me)
-{
+void* server(void *me) {
 	MPI_Comm client;
-	MPI_Status status;
+	MPI_Status st;
+	int cond;
 	char port_name[MPI_MAX_PORT_NAME];
 	int old_size, new_size;
 
 	// Open port
-	if (rank == 0)
-	{
+	if (rank == 0) {
 		MPI_Open_port(MPI_INFO_NULL, port_name);
 		std::ofstream fPort("port_name.txt");
 		for (int i = 0; i < MPI_MAX_PORT_NAME; i++)
 			fPort << port_name[i];
 		fPort.close();
 	}
-	for (; numberOfConnection < countOfConnect; )
-	{
+	for (; numberOfConnection < countOfConnect; ) {
 		// The previous connection must be finished
 		//while (server_new); //RECV
+		if (!numberOfConnection) {
+			MPI_Recv(&cond, 1, MPI_INT, rank, 1998, newComm, &st);
+			if (cond == -1) break;
+		}
 		old_size = size;
 
 		// Waiting for new ranks
