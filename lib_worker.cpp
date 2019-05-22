@@ -55,53 +55,64 @@ void ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
 void* worker(void* me) {
 	bool close = false;
 	MPI_Status st;
-	MPI_Request req;
+	MPI_Request reqCalc, reqChange;
 	MPI_Comm Comm;
-	bool flag;
-	MPI_IRecv(&message, 1, MPI_INT, rank, 1997, Comm, &req);
+	bool flagChange = false, flagCalc = false;
+	MPI_IRecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
 	int cond;
 	// Get message from own rank
 	int countOfProcess, newSize = size;
 	int message;
 	Comm = currentComm;
 	while (!close) {
-		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, Comm, &st);
-		if (cond == 1) {
-			ExecuteOwnTasks();
-			countOfProcess = newSize;
-			// If new ranks comes, their queue is empty	
-			int sign = 1, id, k = 0;
-			bool retry = false;
-			// Task request from another ranks
-			for (int i = 0; i < countOfProcess - 1; i++) {
-				// If request from next rank
-				if (!retry)	id = GetRank(sign, k, countOfProcess);
-				MPI_Test(&req, &flag, &st);
-				if (flag) {
-					ChangeCommunicator(Comm, newSize);
-					MPI_IRecv(&message, 1, MPI_INT, rank, 1997, Comm, &req);
-					flag = false;
-				}
-				ExecuteOtherTask(Comm, id, retry);
-				if (retry) i--;
-			}
-			MPI_Send(&cond, 1, MPI_INT, rank, 1999, Comm);
+		MPI_IRecv(&cond, 1, MPI_INT, rank, 1999, Comm, &st, &reqCalc);
+		while (!flagChange || !flagCalc) {
+			MPI_Test(&reqChange, &flagChange, &st);
+			MPI_Test(&reqCalc, &flagCalc, &st);
 		}
-		else if (cond == -1) close = true;
-		//else if (cond == 2) ChangeCommunicator(Comm, newSize);
+		if (flagChange) {
+			ChangeCommunicator(Comm, newSize);
+			MPI_IRecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
+			flagChange = false;
+		}
+		if (flagCalc){
+			if (cond == 1) {
+				ExecuteOwnTasks();
+				countOfProcess = newSize;
+				// If new ranks comes, their queue is empty	
+				int sign = 1, id, k = 0;
+				bool retry = false;
+				// Task request from another ranks
+				for (int i = 0; i < countOfProcess - 1; i++) {
+					// If request from next rank
+					if (!retry)	id = GetRank(sign, k, countOfProcess);
+					MPI_Test(&req, &flagChange, &st);
+					if (flagChange) {
+						ChangeCommunicator(Comm, newSize);
+						MPI_IRecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
+						flag = false;
+					}
+					ExecuteOtherTask(Comm, id, retry);
+					if (retry) i--;
+				}
+				MPI_Send(&cond, 1, MPI_INT, rank, 1999, Comm);
+			}
+			else if (cond == -1) close = true;
+			flagCalc = false;
+		}
 	}
 	return 0;
 }
 void StartWork() {
 	MPI_Status st;
 	MPI_Request req;
+	startWork = true;
 	int cond = 1;
 	for (int i = 0; i < countOfWorkers; i++)
 		MPI_ISend(&cond, 1, MPI_INT, rank, 1999, Comm, &req);
 	for (int i = 0; i < countOfWorkers; i++)
 		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, Comm);
 	
-	bool change = false;
 	flags[rank] = changeComm;
 	// If any rank changes communicator
 	MPI_Allreduce(flags.data(), globalFlags.data(), globalFlags.size(), MPI_INT, MPI_SUM, reduceComm);
@@ -112,10 +123,14 @@ void StartWork() {
 		t->Clear();
 		sendedTasks.pop();
 	}
-	int count = 0;
-	for (int i = 0; i < globalFlags.size(); i++)
-		if (globalFlags[i]) count++;
-	if (count == globalFlags.size())
-		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, newComm);
+	bool change = false;
+	for (int i = 0; i < globalFlags.size() && !charge; i++)
+		if (globalFlags[i]) change = true;
+	if (change){
+		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, newComm);		
+		flags.resize(size);
+		globalFlags.resize(size);	
+	}
+	startWork = false;
 	fprintf(stderr, "%d:: work has done\n", rank);
 }

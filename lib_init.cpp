@@ -1,5 +1,35 @@
 #include "library.h"
-void LibraryInitialize() {
+
+void CreateLibraryComponents() {	
+	// Create dispatcher
+	if (0 != pthread_create(&thrs[countOfWorkers], &attrs_dispatcher, dispatcher, &ids[countOfWorkers])) {
+		perror("Cannot create a thread");
+		abort();
+	}
+	// Create mapController
+	if (0 != pthread_create(&thrs[countOfWorkers + 1], &attrs_mapController, mapController, &ids[countOfWorkers + 1])) {
+		perror("Cannot create a thread");
+		abort();
+	}
+	// Create server
+	if (!client) {
+		MPI_Comm_dup(currentComm, &serverComm);
+		MPI_Comm_dup(currentComm, &reduceComm);
+		MPI_Comm_dup(currentComm, &barrierComm);
+		if (0 != pthread_create(&thrs[countOfWorkers + 2], &attrs_server, server, &ids[countOfWorkers + 2])) {
+			perror("Cannot create a thread");
+			abort();
+		}
+	}
+	// Create computational treads
+	for (int i = 0; i < countOfWorkers; i++)
+		if (0 != pthread_create(&thrs[i], &attrs_workers, worker, &ids[i])) {
+			perror("Cannot create a thread");
+			abort();
+		}
+}
+
+void LibraryInitialize(bool clientProgram) {
 	int provided = MPI_THREAD_SINGLE;
 	MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
 	if (provided != MPI_THREAD_MULTIPLE) {
@@ -52,49 +82,56 @@ void LibraryInitialize() {
 		perror("Error in setting attributes");
 		abort();
 	}
+	if (clientProgram) {
+		MPI_Comm server;
+		MPI_Status st;
+		double buf[MAX_DATA];
+
+		char port_name[MPI_MAX_PORT_NAME];
+		std::ifstream fPort("port_name.txt");
+		for (int i = 0; i < MPI_MAX_PORT_NAME; i++)
+		fPort >> port_name[i];
+		fPort.close();
+		fprintf(stderr, "%d::port exist\n", rank);
+
+		MPI_Comm_connect(port_name, MPI_INFO_NULL, 0, currentComm, &server);
+		MPI_Intercomm_merge(server, true, &currentComm);
+
+		fprintf(stderr, "%d::connect to server success\n", rank);
+
+		rank_old = rank;
+		MPI_Comm_rank(currentComm, &rank);
+		MPI_Comm_size(currentComm, &size);
+
+		fprintf(stderr, "%d:: new rank = %d, new_size = %d\n", rank_old, rank, size);
+
+		int sizeOfMap;
+		MPI_Recv(&numberOfConnection, 1, MPI_INT, 0, 10002, currentComm, &st);
+		
+		MPI_Recv(&sizeOfMap, 1, MPI_INT, 0, 10000, currentComm, &st);
+		fprintf(stderr, "%d:: sizeOfMap = %d\n", rank, sizeOfMap);
+		if (sizeOfMap) {
+			map.resize(sizeOfMap);
+			MPI_Recv(map.data(), sizeOfMap, MPI_INT, 0, 10001, currentComm, &st);
+			for (int i = 0; i < map.size(); i++)
+				printf("%d; ", map[i]);
+			CreateLibraryComponents();
+		}
+	}
+	else CreateLibraryComponents();
 }
 
-void CreateLibraryComponents()
-{	
-	// Create dispatcher
-	if (0 != pthread_create(&thrs[countOfWorkers], &attrs_dispatcher, dispatcher, &ids[countOfWorkers])) {
-		perror("Cannot create a thread");
-		abort();
-	}
-	// Create mapController
-	if (0 != pthread_create(&thrs[countOfWorkers + 1], &attrs_mapController, mapController, &ids[countOfWorkers + 1])) {
-		perror("Cannot create a thread");
-		abort();
-	}
-	// Create server
-	if (!client) {
-		MPI_Comm_dup(currentComm, &serverComm);
-		MPI_Comm_dup(currentComm, &reduceComm);
-		MPI_Comm_dup(currentComm, &barrierComm);
-		if (0 != pthread_create(&thrs[countOfWorkers + 2], &attrs_server, server, &ids[countOfWorkers + 2])) {
-			perror("Cannot create a thread");
-			abort();
-		}
-	}
-	// Create computational treads
-	for (int i = 0; i < countOfWorkers; i++)
-		if (0 != pthread_create(&thrs[i], &attrs_workers, worker, &ids[i])) {
-			perror("Cannot create a thread");
-			abort();
-		}
-}
-void CloseLibraryComponents() 
-{
+void CloseLibraryComponents() {
 	MPI_Request s;
 	int exit = -1;
-	MPI_Isend(&exit, 1, MPI_INT, rank, 1999, currentComm, &s);
-	MPI_Isend(&exit, 1, MPI_INT, rank, 1030, currentComm, &s);
-	if (existOldDispatcher) {
-		MPI_Isend(&exit, 1, MPI_INT, rank, 2001, currentComm, &s);
-	}
+	// Close dispatcher
 	MPI_Isend(&exit, 1, MPI_INT, rank, 2001, currentComm, &s);
 	pthread_join(thrs[countOfWorkers], NULL);
 	fprintf(stderr, "%d::dispetcher close\n", rank);
+	// Flag for old dispatcher work
+	startWork = true;	
+	// Close old dispatcher
+	pthread_join(thrs[countOfWorkers + 3], NULL);
 	while (numberOfConnection < countOfConnect) {
 		int cond, size_new;
 		MPI_Recv(&cond, 1, MPI_INT, rank, 2001, currentComm, &st);
@@ -105,15 +142,21 @@ void CloseLibraryComponents()
 			for (int k = size_old; k < size_new; k++)
 				MPI_Send(&cond, 1, MPI_INT, k, 10000, newComm);
 		}
-		server_new = false;
+		cond = 1;
+		MPI_Isend(&cond, 1, MPI_INT, rank, 1998, currentComm, &req);
 	}
-	// Wait computational threads
-	for (int i = 0; i < countOfWorkers; i++)
-		pthread_join(thrs[i], NULL));
-	pthread_join(thrs[countOfWorkers + 1], NULL);
-	fprintf(stderr, "%d::mapController close\n", rank);
+	// Close server
 	pthread_join(thrs[countOfWorkers + 2], NULL);
 	fprintf(stderr, "%d::server close\n", rank);
+	// Close map controller
+	MPI_Isend(&exit, 1, MPI_INT, rank, 1030, currentComm, &s);	
+	pthread_join(thrs[countOfWorkers + 1], NULL);
+	fprintf(stderr, "%d::map controller close\n", rank);
+	// Close workers
+	for (int i = 0; i < countOfWorkers; i++)
+		MPI_Isend(&exit, 1, MPI_INT, rank, 1999, currentComm, &s);
+	for (int i = 0; i < countOfWorkers; i++)
+		pthread_join(thrs[i], NULL));
 
 	pthread_attr_destroy(&attrs_dispatcher);
 	pthread_attr_destroy(&attrs_server);

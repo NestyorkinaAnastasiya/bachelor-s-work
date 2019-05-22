@@ -43,7 +43,7 @@ int countOfThreads = 3;
 int numberOfConnection = 0;
 bool STOP = false;
 bool client = false;
-bool existOldDispatcher = false;
+bool startWork = false;
 // Flag for user
 
 pthread_mutex_t mutex_get_task, mutex_set_task;
@@ -52,8 +52,7 @@ pthread_attr_t attrs_dispatcher, attrs_server, attrs_mapController, attrs_worker
 pthread_cond_t server_cond, comunicator_cond;
 pthread_mutex_t server_mutexcond, comunicator_mutexcond;
 
-class ITask
-{
+class ITask {
 public:
 	int blockNumber;
 	void virtual Run() = 0;

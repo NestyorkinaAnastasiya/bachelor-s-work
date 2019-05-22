@@ -9,8 +9,6 @@ void FindSolution() {
 	nameFile += ".txt";
 	std::ofstream fLoading(nameFile);
 
-	CreateLibraryComponents();
-
 	for (iteration = 0; iteration < maxiter && CheckConditions(); iteration++) {
 		if (rank == 0) printf("%d::  --------------------START ITERATION %d---------------------\n", rank, iteration);
 		for (auto &i : newResult) i = 0;
@@ -36,15 +34,12 @@ void FindSolution() {
 		
 		StartWork();
 
-		/*тут было оно*/
-		if (changeExist)
-		{
+		if (changeExist) {
 			changeExist = false;
 			if (rank == 0)
 				for (int k = size_old; k < size; k++)
-					MPI_Send(&iteration, 1, MPI_INT, k, 10005, newComm);
+					MPI_Send(&iteration, 1, MPI_INT, k, 10005, currentComm);
 		}
-		ChangeCommunicator();
 		fprintf(stderr, "%d::get to generate result of iteration\n", rank);
 		GenerateResultOfIteration(reduceComm);
 
@@ -77,17 +72,13 @@ int main(int argc, char **argv) {
 	puts(buffer);
 	LibraryInitialize();
 	if (rank == 0) 	fTime << "servers's processes start in " << buffer << "\n";
-	
 	GenerateBasicConcepts();
 	GenerateQueueOfTask();
 	std::vector<int> tmp(map.size());
 	MPI_Allreduce(map.data(), tmp.data(), map.size(), MPI_INT, MPI_SUM, currentComm);
 	map = tmp;
-
 	FindSolution();
-
 	GenerateResult(currentComm);
-
 	MPI_Finalize();
 	fTime.close();
 	return 0;
