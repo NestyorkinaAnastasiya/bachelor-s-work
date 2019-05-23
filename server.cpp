@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
 	timeinfo = localtime(&rawtime);
 	strftime(buffer, 80, "%H:%M:%S", timeinfo);
 	puts(buffer);
-	LibraryInitialize();
+	LibraryInitialize(false);
 	if (rank == 0) 	fTime << "servers's processes start in " << buffer << "\n";
 	GenerateBasicConcepts();
 	GenerateQueueOfTask();

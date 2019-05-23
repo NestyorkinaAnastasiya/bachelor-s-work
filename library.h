@@ -42,7 +42,6 @@ int countOfWorkers = 1;
 int countOfThreads = 3;
 int numberOfConnection = 0;
 bool STOP = false;
-bool client = false;
 bool startWork = false;
 // Flag for user
 
@@ -85,7 +84,7 @@ void* dispatcher(void* me);
 void* worker(void* me);
 void* mapController(void* me);
 void* server(void *me);
-void LibraryInitialize();
+void LibraryInitialize(bool clientProgram);
 void CreateLibraryComponents();
 void StartWork();
 void CloseLibraryComponents();

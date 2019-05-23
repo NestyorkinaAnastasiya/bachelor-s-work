@@ -46,11 +46,15 @@ void* dispatcher_old(void* me) {
 	MPI_Comm_dup(newComm, &reduceComm);
 	// Flags should be changed in single time
 	currentComm = newComm;
+	changeExist = true;
 	if (close == true) cond = -1;
 	else cond = 1;
 	MPI_Isend(&cond, 1, MPI_INT, rank, 1999, currentComm, &req);	
 	changeComm = false;
-	changeExist = true;
+	if (rank == 0) {
+		for (int k = old_size; k < new_size; k++)
+			MPI_Send(&cond, 1, MPI_INT, k, 10003, newComm);
+	}
 	MPI_Isend(&cond, 1, MPI_INT, rank, 1998, currentComm, &req);
 	fprintf(stderr, "%d:: dispetcher_old close\n", rank);
 

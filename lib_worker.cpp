@@ -115,6 +115,9 @@ void StartWork() {
 	
 	flags[rank] = changeComm;
 	// If any rank changes communicator
+	// Как поступать с клиентом..
+	// Должно быть послано сообщение с инфой о том, что коммуникатор изменился
+	// Подсоединение к вычислениям после изменения коммуникатора....
 	MPI_Allreduce(flags.data(), globalFlags.data(), globalFlags.size(), MPI_INT, MPI_SUM, reduceComm);
 
 	// Clear the memory

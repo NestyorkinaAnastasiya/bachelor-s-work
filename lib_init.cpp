@@ -1,6 +1,9 @@
 #include "library.h"
 
 void CreateLibraryComponents() {	
+	MPI_Comm_dup(currentComm, &serverComm);
+	MPI_Comm_dup(currentComm, &reduceComm);
+	MPI_Comm_dup(currentComm, &barrierComm);
 	// Create dispatcher
 	if (0 != pthread_create(&thrs[countOfWorkers], &attrs_dispatcher, dispatcher, &ids[countOfWorkers])) {
 		perror("Cannot create a thread");
@@ -12,14 +15,9 @@ void CreateLibraryComponents() {
 		abort();
 	}
 	// Create server
-	if (!client) {
-		MPI_Comm_dup(currentComm, &serverComm);
-		MPI_Comm_dup(currentComm, &reduceComm);
-		MPI_Comm_dup(currentComm, &barrierComm);
-		if (0 != pthread_create(&thrs[countOfWorkers + 2], &attrs_server, server, &ids[countOfWorkers + 2])) {
-			perror("Cannot create a thread");
-			abort();
-		}
+	if (0 != pthread_create(&thrs[countOfWorkers + 2], &attrs_server, server, &ids[countOfWorkers + 2])) {
+		perror("Cannot create a thread");
+		abort();
 	}
 	// Create computational treads
 	for (int i = 0; i < countOfWorkers; i++)
@@ -116,6 +114,8 @@ void LibraryInitialize(bool clientProgram) {
 			for (int i = 0; i < map.size(); i++)
 				printf("%d; ", map[i]);
 			CreateLibraryComponents();
+			// All server's ranks change their comunicators
+			MPI_Recv(&sizeOfMap, 1, MPI_INT, 0, 10003, currentComm, &st);
 		}
 	}
 	else CreateLibraryComponents();

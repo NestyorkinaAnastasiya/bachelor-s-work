@@ -1,5 +1,5 @@
 #include "task.cpp"
-client = true;
+bool client = true;
 std::ofstream fTime;
 void FindSolution() {
 	MPI_Status st;
@@ -8,7 +8,10 @@ void FindSolution() {
 	std::string nameFile = "Loading" + ss.str();
 	nameFile += ".txt";
 	std::ofstream fLoading(nameFile);
-
+	if (client) {
+		MPI_Recv(&iteration, 1, MPI_INT, 0, 10005, currentComm, &st);
+		client = false;
+	}
 	for (iteration = 0; iteration < maxiter && CheckConditions(); iteration++) {
 		/* if (rank_old == 0)*/ printf("%d::  --------------------START ITERATION %d---------------------\n", rank, iteration);
 		for (auto &i : newResult) i = 0;
@@ -32,9 +35,7 @@ void FindSolution() {
 		fprintf(stderr, "%d:: count of tasks = %d\n", rank, currentTasks.size());
 
 		StartWork();
-
-		if (client)
-			MPI_Recv(&iteration, 1, MPI_INT, 0, 10005, currentComm, &st);
+				
 		GenerateResultOfIteration(reduceComm);
 
 		while (!queueRecv.empty()) {
