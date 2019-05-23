@@ -15,14 +15,14 @@ void FindSolution() {
 		for (auto &i : oldResult) i = 0;
 		auto t_start = std::chrono::high_resolution_clock::now();
 		while (!allTasks.empty()) {
-			ITask *t = allTasks.front();
+			Task *t = allTasks.front();
 			if (iteration != 0) t->ReceiveFromNeighbors(currentComm);
 			queueRecv.push(t);
 			allTasks.pop();
 		}
 
 		while (!queueRecv.empty()) {
-			ITask *t = queueRecv.front();
+			Task *t = queueRecv.front();
 			if (iteration != 0) t->WaitBorders();
 			pthread_mutex_lock(&mutex_get_task);
 			currentTasks.push(t);
@@ -44,7 +44,7 @@ void FindSolution() {
 		GenerateResultOfIteration(reduceComm);
 
 		while (!queueRecv.empty()) {
-			ITask *t = queueRecv.front();
+			Task *t = queueRecv.front();
 			t->SendToNeighbors(currentComm);
 			queueRecv.pop();
 			allTasks.push(t);

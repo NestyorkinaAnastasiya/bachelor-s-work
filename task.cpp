@@ -220,7 +220,7 @@ void Task::GenerateRecv(int sender, MPI_Comm Comm) {
 	MPI_Recv(points.data(), points.size(), MPI_POINT, sender, 1016, Comm, &st);
 	MPI_Recv(numbersOfKU.data(), numbersOfKU.size(), MPI_INT, sender, 1017, Comm, &st);
 
-	fprintf(stderr, "%d:: get task %d from %d\n", rank, t->blockNumber, sender);
+	fprintf(stderr, "%d:: get task %d from %d\n", rank, blockNumber, sender);
 }
 
 void Task::Calculate1Node(int i) {
