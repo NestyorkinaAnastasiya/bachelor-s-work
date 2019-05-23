@@ -67,6 +67,8 @@ public:
 	void WaitBorders();
 	void Run();
 	void Clear();
+	void GenerateRecv(int sender, MPI_Comm Comm);
+	void GenerateSend(int reciever, MPI_Comm Comm);
 	~Task();
 };
 
