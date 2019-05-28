@@ -35,6 +35,7 @@ std::vector<int> globalFlags;
 int changeComm = false;
 bool server_new = false;
 int condition = 0;
+int rank, size;
 int rank_old, size_old;
 // Count of computational threads
 int countOfWorkers = 1;

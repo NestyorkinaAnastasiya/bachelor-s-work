@@ -90,7 +90,7 @@ void* worker(void* me) {
 					if (flagChange) {
 						ChangeCommunicator(Comm, newSize);
 						MPI_IRecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
-						flag = false;
+						flagChange = false;
 					}
 					ExecuteOtherTask(Comm, id, retry);
 					if (retry) i--;
@@ -108,10 +108,12 @@ void StartWork() {
 	MPI_Request req;
 	startWork = true;
 	int cond = 1;
+	// Как быть уверенным, что тот коммуникатор..........
 	for (int i = 0; i < countOfWorkers; i++)
-		MPI_ISend(&cond, 1, MPI_INT, rank, 1999, Comm, &req);
+		MPI_Isend(&cond, 1, MPI_INT, rank, 1999, CurrentComm, &req);
+// Как быть с изменёнными коммуникаторами на раб потоках (можно как-то сигналами работать? условными переменными)
 	for (int i = 0; i < countOfWorkers; i++)
-		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, Comm);
+		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, CurrentComm);
 	
 	flags[rank] = changeComm;
 	// If any rank changes communicator
@@ -122,12 +124,12 @@ void StartWork() {
 
 	// Clear the memory
 	while (!sendedTasks.empty()) {
-		Task *t = sendedTasks.front();
+		ITask *t = sendedTasks.front();
 		t->Clear();
 		sendedTasks.pop();
 	}
 	bool change = false;
-	for (int i = 0; i < globalFlags.size() && !charge; i++)
+	for (int i = 0; i < globalFlags.size() && !change; i++)
 		if (globalFlags[i]) change = true;
 	if (change){
 		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, newComm);		
