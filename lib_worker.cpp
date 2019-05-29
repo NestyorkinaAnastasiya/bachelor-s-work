@@ -58,11 +58,10 @@ void* worker(void* me) {
 	MPI_Request reqCalc, reqChange;
 	MPI_Comm Comm;
 	int flagChange = false, flagCalc = false;
-	MPI_Irecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
-	int cond;
+	int cond, message;
 	// Get message from own rank
-	int countOfProcess, newSize = size;
-	int message;
+	MPI_Irecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);	
+	int countOfProcess, newSize = size;	
 	Comm = currentComm;
 	while (!close) {
 		MPI_IRecv(&cond, 1, MPI_INT, rank, 1999, Comm, &st, &reqCalc);

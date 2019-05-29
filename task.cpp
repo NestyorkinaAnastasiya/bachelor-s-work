@@ -1,6 +1,5 @@
 #include "library.h"
 typedef double myType;
-int countOfConnect = 2;
 // Максимальное кол-во итераций
 int maxiter = 10000;
 double eps = 1e-8;
@@ -19,7 +18,6 @@ hy = 0.5,
 hz = 0.5;*/
 int countOfBlockY = 4,
 countOfBlockZ = 4;
-std::vector <int> map;
 // Координаты начала и конца области
 double	begX = 0, endX = 2,
 begY = 0, endY = 2,
