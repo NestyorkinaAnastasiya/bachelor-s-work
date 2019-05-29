@@ -45,9 +45,9 @@ int countOfThreads = 3;
 
 int countOfConnect = 2;
 int numberOfConnection = 0;
+
 bool STOP = false;
 bool startWork = false;
-// Flag for user
 
 pthread_mutex_t mutex_get_task, mutex_set_task;
 pthread_mutexattr_t attr_set_task, attr_get_task;
@@ -60,7 +60,7 @@ public:
 	int blockNumber;
 	void virtual Run() = 0;
 	void virtual Clear() = 0;
-	void virtual GenerateRecv(int sender, MPI_Comm Comm) = 0;
+	void virtual GenerateRecv(ITask *t, int sender, MPI_Comm Comm) = 0;
 	void virtual GenerateSend(int reciever, MPI_Comm Comm) = 0;
 };
 

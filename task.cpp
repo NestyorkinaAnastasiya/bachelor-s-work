@@ -180,7 +180,8 @@ void Task::GenerateSend(int reciever, MPI_Comm Comm) {
 	fprintf(stderr, "%d:: send task %d to %d\n", rank, blockNumber, reciever);
 }
 
-void Task::GenerateRecv(int sender, MPI_Comm Comm) {
+void Task::GenerateRecv(ITask *t, int sender, MPI_Comm Comm) {
+	t = new Task();
 	MPI_Status st;
 	MPI_Recv(neighbors.data(), 6, MPI_INT, sender, 1018, Comm, &st);
 	MPI_Recv(&blockNumber, 1, MPI_INT, sender, 1019, Comm, &st);

@@ -32,9 +32,9 @@ void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry) {
 
 	// If task exist, worker recieve and execute it
 	if (existTask) {
-		ITask *t = new ITask;
+		ITask *t;
 		pthread_mutex_lock(&mutex_set_task);
-		t->GenerateRecv(id, Comm);
+		t->GenerateRecv(t, id, Comm);
 		queueRecv.push(t);
 		pthread_mutex_unlock(&mutex_set_task);
 		t->Run();
