@@ -30,7 +30,7 @@ void* dispatcher_old(void* me) {
 	ITask *t;
 	int cond = 2;
 	for (int i = 0; i < countOfWorkers; i++)
-		MPI_ISend(&cond, 1, MPI_INT, rank_old, 1997, currentComm, &req);
+		MPI_Isend(&cond, 1, MPI_INT, rank_old, 1997, currentComm, &req);
 	bool close = false;
 	for (int i = 0; i < size_old * countOfWorkers && !close; ) {
 		MPI_Status st;

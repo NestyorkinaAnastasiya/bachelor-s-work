@@ -64,7 +64,7 @@ void* worker(void* me) {
 	int countOfProcess, newSize = size;	
 	Comm = currentComm;
 	while (!close) {
-		MPI_IRecv(&cond, 1, MPI_INT, rank, 1999, Comm, &st, &reqCalc);
+		MPI_Irecv(&cond, 1, MPI_INT, rank, 1999, Comm, &st, &reqCalc);
 		while (!flagChange || !flagCalc) {
 			MPI_Test(&reqChange, &flagChange, &st);
 			MPI_Test(&reqCalc, &flagCalc, &st);

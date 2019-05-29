@@ -3,7 +3,6 @@
 void CreateLibraryComponents() {	
 	MPI_Comm_dup(currentComm, &serverComm);
 	MPI_Comm_dup(currentComm, &reduceComm);
-	MPI_Comm_dup(currentComm, &barrierComm);
 	// Create dispatcher
 	if (0 != pthread_create(&thrs[countOfWorkers], &attrs_dispatcher, dispatcher, &ids[countOfWorkers])) {
 		perror("Cannot create a thread");
