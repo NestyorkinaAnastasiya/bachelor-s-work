@@ -60,7 +60,7 @@ public:
 	int blockNumber;
 	void virtual Run() = 0;
 	void virtual Clear() = 0;
-	void virtual GenerateRecv(ITask *t, int sender, MPI_Comm Comm) = 0;
+	void virtual GenerateRecv(int sender, MPI_Comm Comm) = 0;
 	void virtual GenerateSend(int reciever, MPI_Comm Comm) = 0;
 };
 
