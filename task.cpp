@@ -6,7 +6,6 @@ int maxiter = 10000;
 double eps = 1e-8;
 double residual = 1;
 int dim;
-int size, rank;
 // Шаги сетки
 double	hx = 0.1,
 hy = 0.1,

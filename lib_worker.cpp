@@ -31,8 +31,8 @@ void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry) {
 	MPI_Recv(&existTask, 1, MPI_INT, id, 2002, Comm, &st);
 
 	// If task exist, worker recieve and execute it
-	if (exitTask) {
-		ITask *t = new Task;
+	if (existTask) {
+		ITask *t = new ITask;
 		pthread_mutex_lock(&mutex_set_task);
 		t->GenerateRecv(id, Comm);
 		queueRecv.push(t);
@@ -47,7 +47,7 @@ void ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
 	int message = 1;
 	MPI_Request req;
 	for (int i = 0; i < newSize; i++)
-		MPI_ISend(&message, 1, MPI_INT, i, 2001, Comm, &req);
+		MPI_Isend(&message, 1, MPI_INT, i, 2001, Comm, &req);
 	Comm = newComm;
 	newSize = size;
 }
@@ -57,8 +57,8 @@ void* worker(void* me) {
 	MPI_Status st;
 	MPI_Request reqCalc, reqChange;
 	MPI_Comm Comm;
-	bool flagChange = false, flagCalc = false;
-	MPI_IRecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
+	int flagChange = false, flagCalc = false;
+	MPI_Irecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
 	int cond;
 	// Get message from own rank
 	int countOfProcess, newSize = size;
@@ -86,7 +86,7 @@ void* worker(void* me) {
 				for (int i = 0; i < countOfProcess - 1; i++) {
 					// If request from next rank
 					if (!retry)	id = GetRank(sign, k, countOfProcess);
-					MPI_Test(&req, &flagChange, &st);
+					MPI_Test(&reqChange, &flagChange, &st);
 					if (flagChange) {
 						ChangeCommunicator(Comm, newSize);
 						MPI_IRecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
@@ -110,10 +110,10 @@ void StartWork() {
 	int cond = 1;
 	// Как быть уверенным, что тот коммуникатор..........
 	for (int i = 0; i < countOfWorkers; i++)
-		MPI_Isend(&cond, 1, MPI_INT, rank, 1999, CurrentComm, &req);
+		MPI_Isend(&cond, 1, MPI_INT, rank, 1999, currentComm, &req);
 // Как быть с изменёнными коммуникаторами на раб потоках (можно как-то сигналами работать? условными переменными)
 	for (int i = 0; i < countOfWorkers; i++)
-		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, CurrentComm);
+		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, currentComm, &st);
 	
 	flags[rank] = changeComm;
 	// If any rank changes communicator
@@ -132,7 +132,7 @@ void StartWork() {
 	for (int i = 0; i < globalFlags.size() && !change; i++)
 		if (globalFlags[i]) change = true;
 	if (change){
-		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, newComm);		
+		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, newComm, &st);		
 		flags.resize(size);
 		globalFlags.resize(size);	
 	}

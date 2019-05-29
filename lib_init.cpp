@@ -27,7 +27,7 @@ void CreateLibraryComponents() {
 		}
 }
 
-void LibraryInitialize(bool clientProgram) {
+void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 	int provided = MPI_THREAD_SINGLE;
 	MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
 	if (provided != MPI_THREAD_MULTIPLE) {
@@ -122,6 +122,7 @@ void LibraryInitialize(bool clientProgram) {
 }
 
 void CloseLibraryComponents() {
+	MPI_Status st;
 	MPI_Request s;
 	int exit = -1;
 	// Close dispatcher
@@ -143,7 +144,7 @@ void CloseLibraryComponents() {
 				MPI_Send(&cond, 1, MPI_INT, k, 10000, newComm);
 		}
 		cond = 1;
-		MPI_Isend(&cond, 1, MPI_INT, rank, 1998, currentComm, &req);
+		MPI_Isend(&cond, 1, MPI_INT, rank, 1998, currentComm, &s);
 	}
 	// Close server
 	pthread_join(thrs[countOfWorkers + 2], NULL);
@@ -156,7 +157,7 @@ void CloseLibraryComponents() {
 	for (int i = 0; i < countOfWorkers; i++)
 		MPI_Isend(&exit, 1, MPI_INT, rank, 1999, currentComm, &s);
 	for (int i = 0; i < countOfWorkers; i++)
-		pthread_join(thrs[i], NULL));
+		pthread_join(thrs[i], NULL);
 
 	pthread_attr_destroy(&attrs_dispatcher);
 	pthread_attr_destroy(&attrs_server);

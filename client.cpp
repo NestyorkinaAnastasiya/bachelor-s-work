@@ -18,14 +18,14 @@ void FindSolution() {
 		for (auto &i : oldResult) i = 0;
 
 		while (!allTasks.empty()) {
-			Task *t = allTasks.front();
+			Task *t = dynamic_cast<Task*>(allTasks.front());
 			if (iteration != 0) t->ReceiveFromNeighbors(currentComm);
 			queueRecv.push(t);
 			allTasks.pop();
 		}
 
 		while (!queueRecv.empty()) {
-			Task *t = queueRecv.front();
+			Task *t = dynamic_cast<Task*>(queueRecv.front());
 			if (iteration != 0) t->WaitBorders();
 			pthread_mutex_lock(&mutex_get_task);
 			currentTasks.push(t);
@@ -39,7 +39,7 @@ void FindSolution() {
 		GenerateResultOfIteration(reduceComm);
 
 		while (!queueRecv.empty()) {
-			Task *t = queueRecv.front();
+			Task *t = dynamic_cast<Task*>(queueRecv.front());
 			t->SendToNeighbors(currentComm);
 			allTasks.push(t);
 			queueRecv.pop();
@@ -63,10 +63,10 @@ int main(int argc, char **argv) {
 		std::string nameFile = "time_client" + ss.str();
 		nameFile += ".txt";
 		fTime.open(nameFile);
-		Time << "client's processes start in " << buffer << "\n";
+		fTime << "client's processes start in " << buffer << "\n";
 		fTime.close();
 	}
-	LibraryInitialize(true);
+	LibraryInitialize(argc, argv, true);
 	// If work exist
 	if (map.size())	{
 		GenerateBasicConcepts();

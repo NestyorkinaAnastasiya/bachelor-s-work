@@ -32,6 +32,7 @@ MPI_Comm oldComm, newComm, serverComm, reduceComm;
 
 std::vector<int> flags;
 std::vector<int> globalFlags;
+std:: vector <int> map;
 int changeComm = false;
 bool server_new = false;
 int condition = 0;
@@ -41,6 +42,8 @@ int rank_old, size_old;
 int countOfWorkers = 1;
 // Count of all threads
 int countOfThreads = 3;
+
+int countOfConnect = 2;
 int numberOfConnection = 0;
 bool STOP = false;
 bool startWork = false;
@@ -83,7 +86,7 @@ void* dispatcher(void* me);
 void* worker(void* me);
 void* mapController(void* me);
 void* server(void *me);
-void LibraryInitialize(bool clientProgram);
+void LibraryInitialize(int argc, char **argv, bool clientProgram);
 void CreateLibraryComponents();
 void StartWork();
 void CloseLibraryComponents();

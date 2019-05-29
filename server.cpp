@@ -15,14 +15,14 @@ void FindSolution() {
 		for (auto &i : oldResult) i = 0;
 		auto t_start = std::chrono::high_resolution_clock::now();
 		while (!allTasks.empty()) {
-			Task *t = allTasks.front();
+			Task *t = dynamic_cast<Task*>(allTasks.front());
 			if (iteration != 0) t->ReceiveFromNeighbors(currentComm);
 			queueRecv.push(t);
 			allTasks.pop();
 		}
 
 		while (!queueRecv.empty()) {
-			Task *t = queueRecv.front();
+			Task *t = dynamic_cast<Task*>(queueRecv.front());
 			if (iteration != 0) t->WaitBorders();
 			pthread_mutex_lock(&mutex_get_task);
 			currentTasks.push(t);
@@ -44,7 +44,7 @@ void FindSolution() {
 		GenerateResultOfIteration(reduceComm);
 
 		while (!queueRecv.empty()) {
-			Task *t = queueRecv.front();
+			Task *t = dynamic_cast<Task*>(queueRecv.front());
 			t->SendToNeighbors(currentComm);
 			queueRecv.pop();
 			allTasks.push(t);
@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
 	timeinfo = localtime(&rawtime);
 	strftime(buffer, 80, "%H:%M:%S", timeinfo);
 	puts(buffer);
-	LibraryInitialize(false);
+	LibraryInitialize(argc, argv, false);
 	if (rank == 0) 	fTime << "servers's processes start in " << buffer << "\n";
 	GenerateBasicConcepts();
 	GenerateQueueOfTask();

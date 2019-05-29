@@ -52,7 +52,7 @@ void* dispatcher_old(void* me) {
 	MPI_Isend(&cond, 1, MPI_INT, rank, 1999, currentComm, &req);	
 	changeComm = false;
 	if (rank == 0) {
-		for (int k = old_size; k < new_size; k++)
+		for (int k = size_old; k < size; k++)
 			MPI_Send(&cond, 1, MPI_INT, k, 10003, newComm);
 	}
 	MPI_Isend(&cond, 1, MPI_INT, rank, 1998, currentComm, &req);
