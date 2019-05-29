@@ -64,14 +64,14 @@ void* worker(void* me) {
 	int countOfProcess, newSize = size;	
 	Comm = currentComm;
 	while (!close) {
-		MPI_Irecv(&cond, 1, MPI_INT, rank, 1999, Comm, &st, &reqCalc);
+		MPI_Irecv(&cond, 1, MPI_INT, rank, 1999, Comm, &reqCalc);
 		while (!flagChange || !flagCalc) {
 			MPI_Test(&reqChange, &flagChange, &st);
 			MPI_Test(&reqCalc, &flagCalc, &st);
 		}
 		if (flagChange) {
 			ChangeCommunicator(Comm, newSize);
-			MPI_IRecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
+			MPI_Irecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
 			flagChange = false;
 		}
 		if (flagCalc){
@@ -88,7 +88,7 @@ void* worker(void* me) {
 					MPI_Test(&reqChange, &flagChange, &st);
 					if (flagChange) {
 						ChangeCommunicator(Comm, newSize);
-						MPI_IRecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
+						MPI_Irecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
 						flagChange = false;
 					}
 					ExecuteOtherTask(Comm, id, retry);
