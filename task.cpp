@@ -1,5 +1,6 @@
-#include "library.h"
-typedef double myType;
+#include "task.h"
+
+MPI_Datatype MPI_POINT;
 // Максимальное кол-во итераций
 int maxiter = 10000;
 double eps = 1e-8;
@@ -23,52 +24,12 @@ double	begX = 0, endX = 2,
 begY = 0, endY = 2,
 begZ = 0, endZ = 2;
 MPI_Datatype MPI_POINT;
-
-struct Point {
-	myType x, y, z;
-	int globalNumber;
-
-	void set(myType x1, myType y1, myType z1, int glN) {
-		x = x1;
-		y = y1;
-		z = z1;
-		globalNumber = glN;
-	};
-};
-std::vector<myType> oldResult, newResult;
-std::vector <myType> globalRes;
-std::vector <myType> globalOldRes;
+std::vector<double> oldResult, newResult;
+std::vector <double> globalRes;
+std::vector <double> globalOldRes;
 int iteration = 0;
 // Количество интервалов по координате
 int intervalsX, intervalsY, intervalsZ;
-
-class Task: public ITask {
-public:
-	double *oldData, *newData;
-	int localNumber;
-	int tasks_x, tasks_y;
-	int flag = 1;
-	//	LeftX, RightX, LowY, UpY, LowZ, UpZ;
-	std::array<std::vector<myType>, 6> bordersSend, bordersRecv;
-	std::array <MPI_Request, 6>  sendReq, recvReq;
-	std::array<int, 6> neighbors;
-	std::array<std::vector <int>, 6> shadowBorders;
-	std::vector <myType> oldU, newU, F;
-	std::vector <Point> points;
-	std::vector <int> numbersOfKU;
-	bool BelongToShadowBorders(int node);
-	bool BelongToKU(int node);
-	void Calculate1Node(int i);
-	void ReceiveFromNeighbors(MPI_Comm Comm);
-	void SendToNeighbors(MPI_Comm Comm);
-	void WaitBorders();
-	void Run();
-	void Clear();
-	void GenerateRecv(int sender, MPI_Comm Comm);
-	void GenerateSend(int reciever, MPI_Comm Comm);
-	~Task();
-};
-
 std::vector<Task> t;
 void Task::Clear() {
 	for (int i = 0; i < 6; i++) {

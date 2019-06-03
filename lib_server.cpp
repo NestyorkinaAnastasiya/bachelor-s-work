@@ -16,11 +16,8 @@ void* server(void *me) {
 	}
 	for (; numberOfConnection < countOfConnect; ) {
 		// The previous connection must be finished
-		//while (server_new); //RECV
-		if (!numberOfConnection) {
+		if (!numberOfConnection) 
 			MPI_Recv(&cond, 1, MPI_INT, rank, 1998, newComm, &st);
-			if (cond == -1) break;
-		}
 		old_size = size;
 
 		// Waiting for new ranks

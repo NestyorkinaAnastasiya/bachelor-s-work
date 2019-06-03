@@ -1,4 +1,4 @@
-#include "library.h"
+#include "task.h"
 int GetRank(int &sign, int &k, int countOfProcess) {
 	if (sign == 1) {
 		sign = -1;
@@ -32,7 +32,7 @@ void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry) {
 
 	// If task exist, worker recieve and execute it
 	if (existTask) {
-		ITask *t = new ITask();
+		Task *t = new ITask();
 		pthread_mutex_lock(&mutex_set_task);
 		t->GenerateRecv(id, Comm);
 		queueRecv.push(t);
@@ -44,10 +44,10 @@ void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry) {
 	else retry = false;
 }
 void ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
-	int message = 1;
+	int message = 3;
 	MPI_Request req;
 	for (int i = 0; i < newSize; i++)
-		MPI_Isend(&message, 1, MPI_INT, i, 2001, Comm, &req);
+		MPI_Isend(&message, 1, MPI_INT, i, 1999, Comm, &req);
 	Comm = newComm;
 	newSize = size;
 }
@@ -107,33 +107,46 @@ void StartWork() {
 	MPI_Request req;
 	startWork = true;
 	int cond = 1;
-	// Как быть уверенным, что тот коммуникатор..........
 	for (int i = 0; i < countOfWorkers; i++)
 		MPI_Isend(&cond, 1, MPI_INT, rank, 1999, currentComm, &req);
-// Как быть с изменёнными коммуникаторами на раб потоках (можно как-то сигналами работать? условными переменными)
-	for (int i = 0; i < countOfWorkers; i++)
+	int count = 0, countOfConnectedWorkers = 0;
+	bool connection = false;
+	while (count < countOfWorkers || connection) {
 		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, currentComm, &st);
-	
-	flags[rank] = changeComm;
-	// If any rank changes communicator
-	// Как поступать с клиентом..
-	// Должно быть послано сообщение с инфой о том, что коммуникатор изменился
-	// Подсоединение к вычислениям после изменения коммуникатора....
-	MPI_Allreduce(flags.data(), globalFlags.data(), globalFlags.size(), MPI_INT, MPI_SUM, reduceComm);
-
+		if (cond == 2) {
+			countConnectedWorkers = 0;
+			connection = true;
+			for (int i = 0; i < countOfWorkers; i++)
+				MPI_Isend(&cond, 1, MPI_INT, rank_old, 1997, currentComm, &req);
+			MPI_Comm_dup(newComm, &serverComm);
+			MPI_Comm_dup(newComm, &reduceComm);
+		}
+		else if (count == 3) {
+			countOfConnectedWorkers++;
+			if (countOfConnectedWorkers == size_old * countOfWorkers) {
+				changeExist = true;
+				cond = 4;				
+				// Send message to close old dispatcher
+				MPI_Recv(&cond, 1, MPI_INT, rank, 2001, currentComm);
+				currentComm = newComm;
+				// Send message to clients about changed communicator
+				if (rank == 0) {
+					for (int k = size_old; k < size; k++)
+						MPI_Send(&cond, 1, MPI_INT, k, 10003, newComm);
+				}
+				// Send message to server about changed communicator
+				changeComm = false;
+				MPI_Isend(&cond, 1, MPI_INT, rank, 1998, currentComm, &req);
+				connection = false;
+			}
+		}
+		else count++;
+	}
 	// Clear the memory
 	while (!sendedTasks.empty()) {
 		ITask *t = sendedTasks.front();
 		t->Clear();
 		sendedTasks.pop();
-	}
-	bool change = false;
-	for (int i = 0; i < globalFlags.size() && !change; i++)
-		if (globalFlags[i]) change = true;
-	if (change){
-		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, newComm, &st);		
-		flags.resize(size);
-		globalFlags.resize(size);	
 	}
 	startWork = false;
 	fprintf(stderr, "%d:: work has done\n", rank);

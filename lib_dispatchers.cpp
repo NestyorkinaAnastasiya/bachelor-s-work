@@ -27,37 +27,21 @@ void SendTask(MPI_Status &st, MPI_Comm &CommWorker, MPI_Comm &CommMap){
 void* dispatcher_old(void* me) {
 	fprintf(stderr, "%d::dispetcher_old run\n", rank);	
 	MPI_Request req;
+	MPI_Comm oldComm_ = currentComm, newComm_ = newComm;
 	ITask *t;
 	int cond = 2;
-	for (int i = 0; i < countOfWorkers; i++)
-		MPI_Isend(&cond, 1, MPI_INT, rank_old, 1997, currentComm, &req);
+	/*for (int i = 0; i < countOfWorkers; i++)
+		MPI_Isend(&cond, 1, MPI_INT, rank_old, 1997, currentComm, &req);*/
+	MPI_Isend(&cond, 1, MPI_INT, rank_old, 1999, oldComm_, &req);
 	bool close = false;
-	for (int i = 0; i < size_old * countOfWorkers && !close; ) {
+	while (!close) {
 		MPI_Status st;
-		MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 2001, currentComm, &st);
+		MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 2001, oldComm_, &st);
 		// Task request
-		if (cond == 0) SendTask(st, currentComm, newComm);
-		// Some worker changes communicator
-		else if (cond == 1) { i++; }
+		if (cond == 0) SendTask(st, currentComm, newComm_);
 		else if (cond == 4) { close = true;	}
-	}	
-	while (!startWork);
-	MPI_Comm_dup(newComm, &serverComm);
-	MPI_Comm_dup(newComm, &reduceComm);
-	// Flags should be changed in single time
-	currentComm = newComm;
-	changeExist = true;
-	if (close == true) cond = -1;
-	else cond = 1;
-	MPI_Isend(&cond, 1, MPI_INT, rank, 1999, currentComm, &req);	
-	changeComm = false;
-	if (rank == 0) {
-		for (int k = size_old; k < size; k++)
-			MPI_Send(&cond, 1, MPI_INT, k, 10003, newComm);
-	}
-	MPI_Isend(&cond, 1, MPI_INT, rank, 1998, currentComm, &req);
+	}		
 	fprintf(stderr, "%d:: dispetcher_old close\n", rank);
-
 	return 0;
 }
 
