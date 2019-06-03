@@ -12,7 +12,7 @@ void FindSolution() {
 	MPI_Status st;
 	
 	std::stringstream ss;
-	ss << rank;
+	ss << lib.rank;
 	std::string nameFile = "Loading" + ss.str();
 	nameFile += ".txt";
 	std::ofstream fLoading(nameFile);
@@ -79,14 +79,14 @@ int main(int argc, char **argv) {
 	strftime(buffer, 80, "%H:%M:%S", timeinfo);
 	puts(buffer);
 	lib.LibraryInitialize(argc, argv, false);
-	if (rank == 0) 	fTime << "servers's processes start in " << buffer << "\n";
+	if (lib.rank == 0) 	fTime << "servers's processes start in " << buffer << "\n";
 	GenerateBasicConcepts();
 	GenerateQueueOfTask(allTasks, map);
 	std::vector<int> tmp(map.size());
-	lib.map.resize(map.size())
+	lib.map.resize(map.size());
 	MPI_Allreduce(map.data(), lib.map.data(), map.size(), MPI_INT, MPI_SUM, currentComm);
 	FindSolution();
-	GenerateResult(currentComm);
+	GenerateResult(lib.currentComm);
 	MPI_Finalize();
 	fTime.close();
 	return 0;

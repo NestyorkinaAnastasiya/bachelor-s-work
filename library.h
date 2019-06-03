@@ -1,3 +1,4 @@
+#pragma once
 #define HAVE_STRUCT_TIMESPEC
 #include <pthread.h>
 #define MSMPI_NO_DEPRECATE_20
@@ -15,6 +16,7 @@
 #include <math.h>
 #include <stddef.h>
 #include <sstream>
+#define MAX_DATA 1000
 class ITask {
 public:
 	int blockNumber;
@@ -44,11 +46,11 @@ class Library {
 	pthread_cond_t server_cond, comunicator_cond;
 	pthread_mutex_t server_mutexcond, comunicator_mutexcond;
 
-	void* dispatcher_old(void* me);
-	void* dispatcher(void* me);
-	void* worker(void* me);
-	void* mapController(void* me);
-	void* server(void *me);
+	static void* dispatcher_old(void* me);
+	static void* dispatcher(void* me);
+	static void* worker(void* me);
+	static void* mapController(void* me);
+	static void* server(void *me);
 	bool GetTask(ITask **currTask) {
 		pthread_mutex_lock(&mutex_get_task);
 		if (currentTasks.empty()) {
@@ -62,9 +64,10 @@ class Library {
 		pthread_mutex_unlock(&mutex_get_task);
 		return true;
 	}
+	int GetRank(int &sign, int &k, int countOfProcess);
 	void SendTask(MPI_Status &st, MPI_Comm &CommWorker, MPI_Comm &CommMap);
 	void ExecuteOwnTasks();
-	void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry)
+	void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry);
 	void ChangeCommunicator(MPI_Comm &Comm, int &newSize);
 public:
 	int numberOfConnection = 0;

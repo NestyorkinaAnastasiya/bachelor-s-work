@@ -35,8 +35,6 @@ void Library::LibraryInitialize(int argc, char **argv, bool clientProgram) {
 	}
 	MPI_Comm_rank(currentComm, &rank);
 	MPI_Comm_size(currentComm, &size);
-	flags.resize(size);
-	globalFlags.resize(size);
 	pthread_mutexattr_init(&attr_get_task);
 	pthread_mutex_init(&mutex_get_task, &attr_get_task);	
 	pthread_mutexattr_init(&attr_set_task);
