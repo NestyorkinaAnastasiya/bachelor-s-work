@@ -1,5 +1,6 @@
 #pragma once
 #include "library.h"
+
 // Максимальное кол-во итераций
 int maxiter = 10000;
 std::vector<double> oldResult, newResult;

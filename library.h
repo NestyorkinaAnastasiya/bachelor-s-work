@@ -63,11 +63,11 @@ class Library {
 		pthread_mutex_unlock(&mutex_get_task);
 		return true;
 	}
-	int GetRank(int &sign, int &k, int countOfProcess);
-	void SendTask(MPI_Status &st, MPI_Comm &CommWorker, MPI_Comm &CommMap);
-	void ExecuteOwnTasks();
-	void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry);
-	void ChangeCommunicator(MPI_Comm &Comm, int &newSize);
+	static int GetRank(int &sign, int &k, int countOfProcess);
+	static void SendTask(MPI_Status &st, MPI_Comm &CommWorker, MPI_Comm &CommMap);
+	static void ExecuteOwnTasks();
+	static void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry);
+	static void ChangeCommunicator(MPI_Comm &Comm, int &newSize);
 public:
 	static int numberOfConnection;
 	static pthread_mutex_t mutex_get_task, mutex_set_task;
@@ -80,13 +80,17 @@ public:
 	// Communicators
 	static MPI_Comm currentComm;
 	static MPI_Comm oldComm, newComm, serverComm, reduceComm;
-	void LibraryInitialize(int argc, char **argv, bool clientProgram);
-	void CreateLibraryComponents();
-	void StartWork();
-	void CloseLibraryComponents();
+	static void LibraryInitialize(int argc, char **argv, bool clientProgram);
+	static void CreateLibraryComponents();
+	static void StartWork();
+	static void CloseLibraryComponents();
 };
 int Library::countOfConnect = 2;
 MPI_Comm Library::currentComm = MPI_COMM_WORLD;
+MPI_Comm Library::oldComm = MPI_COMM_WORLD;
+MPI_Comm Library::newComm = MPI_COMM_WORLD;
+MPI_Comm Library::serverComm = MPI_COMM_WORLD;
+MPI_Comm Library::reduceComm = MPI_COMM_WORLD;
 // id for threads
 int Library::ids[11] = { 0,1,2,3,4,5,6,7,8,9,10 };
 // descriptors for threads
