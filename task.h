@@ -5,6 +5,7 @@ std::vector<double> oldResult, newResult;
 std::vector <double> globalRes;
 std::vector <double> globalOldRes;
 int iteration = 0;
+double residual = 1;
 struct Point {
 	double x, y, z;
 	int globalNumber;
