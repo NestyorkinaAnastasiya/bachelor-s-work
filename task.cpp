@@ -1,6 +1,4 @@
 #include "task.h"
-
-MPI_Datatype MPI_POINT;
 // Максимальное кол-во итераций
 int maxiter = 10000;
 double eps = 1e-8;

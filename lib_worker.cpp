@@ -32,7 +32,7 @@ void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry) {
 
 	// If task exist, worker recieve and execute it
 	if (existTask) {
-		Task *t = new ITask();
+		Task *t = new Task();
 		pthread_mutex_lock(&mutex_set_task);
 		t->GenerateRecv(id, Comm);
 		queueRecv.push(t);
@@ -114,7 +114,7 @@ void StartWork() {
 	while (count < countOfWorkers || connection) {
 		MPI_Recv(&cond, 1, MPI_INT, rank, 1999, currentComm, &st);
 		if (cond == 2) {
-			countConnectedWorkers = 0;
+			countOfConnectedWorkers = 0;
 			connection = true;
 			for (int i = 0; i < countOfWorkers; i++)
 				MPI_Isend(&cond, 1, MPI_INT, rank_old, 1997, currentComm, &req);
@@ -127,12 +127,12 @@ void StartWork() {
 				changeExist = true;
 				cond = 4;				
 				// Send message to close old dispatcher
-				MPI_Recv(&cond, 1, MPI_INT, rank, 2001, currentComm);
+				MPI_Send(&cond, 1, MPI_INT, rank, 2001, currentComm);
 				currentComm = newComm;
 				// Send message to clients about changed communicator
 				if (rank == 0) {
 					for (int k = size_old; k < size; k++)
-						MPI_Send(&cond, 1, MPI_INT, k, 10003, newComm);
+						MPI_Send(&cond, 1, MPI_INT, k, 10003, currentComm);
 				}
 				// Send message to server about changed communicator
 				changeComm = false;
