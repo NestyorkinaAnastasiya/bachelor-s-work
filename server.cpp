@@ -20,58 +20,58 @@ void FindSolution() {
 	MPI_Status st;
 	
 	std::stringstream ss;
-	ss << lib.rank;
+	ss << Library::rank;
 	std::string nameFile = "Loading" + ss.str();
 	nameFile += ".txt";
 	std::ofstream fLoading(nameFile);
 
 	for (iteration = 0; iteration < maxiter && CheckConditions(); iteration++) {
-		if (lib.rank == 0) printf("%d::  --------------------START ITERATION %d---------------------\n", lib.rank, iteration);
+		if (Library::rank == 0) printf("%d::  --------------------START ITERATION %d---------------------\n", Library::rank, iteration);
 		for (auto &i : newResult) i = 0;
 		for (auto &i : oldResult) i = 0;
 		auto t_start = std::chrono::high_resolution_clock::now();
 		while (!allTasks.empty()) {
 			Task *t = dynamic_cast<Task*>(allTasks.front());
-			if (iteration != 0) t->ReceiveFromNeighbors(lib.currentComm);
-			lib.queueRecv.push(t);
+			if (iteration != 0) t->ReceiveFromNeighbors(Library::currentComm);
+			Library::queueRecv.push(t);
 			allTasks.pop();
 		}
 
-		while (!lib.queueRecv.empty()) {
-			Task *t = dynamic_cast<Task*>(lib.queueRecv.front());
+		while (!Library::queueRecv.empty()) {
+			Task *t = dynamic_cast<Task*>(Library::queueRecv.front());
 			if (iteration != 0) t->WaitBorders();
-			pthread_mutex_lock(&lib.mutex_get_task);
-			lib.currentTasks.push(t);
-			pthread_mutex_unlock(&lib.mutex_get_task);
-			lib.queueRecv.pop();
+			pthread_mutex_lock(&Library::mutex_get_task);
+			Library::currentTasks.push(t);
+			pthread_mutex_unlock(&Library::mutex_get_task);
+			Library::queueRecv.pop();
 		}
 
-		fprintf(stderr, "%d:: count of tasks = %d\n", lib.rank, lib.currentTasks.size());
+		fprintf(stderr, "%d:: count of tasks = %d\n", Library::rank, Library::currentTasks.size());
 		
 		lib.StartWork();
 
-		if (lib.changeExist) {
-			lib.changeExist = false;
-			if (lib.rank == 0)
-				for (int k = lib.size_old; k < lib.size; k++)
-					MPI_Send(&iteration, 1, MPI_INT, k, 10005, lib.currentComm);
+		if (Library::changeExist) {
+			Library::changeExist = false;
+			if (Library::rank == 0)
+				for (int k = Library::size_old; k < Library::size; k++)
+					MPI_Send(&iteration, 1, MPI_INT, k, 10005, Library::currentComm);
 		}
-		fprintf(stderr, "%d::get to generate result of iteration\n", lib.rank);
-		GenerateResultOfIteration(lib.reduceComm);
+		fprintf(stderr, "%d::get to generate result of iteration\n", Library::rank);
+		GenerateResultOfIteration(Library::reduceComm);
 
-		while (!lib.queueRecv.empty()) {
-			Task *t = dynamic_cast<Task*>(lib.queueRecv.front());
-			t->SendToNeighbors(lib.currentComm);
-			lib.queueRecv.pop();
+		while (!Library::queueRecv.empty()) {
+			Task *t = dynamic_cast<Task*>(Library::queueRecv.front());
+			t->SendToNeighbors(Library::currentComm);
+			Library::queueRecv.pop();
 			allTasks.push(t);
 		}
 		auto t_end = std::chrono::high_resolution_clock::now();
-		if (lib.rank == 0) {
-			printf("%d:: res = %e\n", lib.rank, residual);
-			printf("%d:: --------------------FINISH ITERATION %d---------------------\n", lib.rank, iteration);
+		if (Library::rank == 0) {
+			printf("%d:: res = %e\n", Library::rank, residual);
+			printf("%d:: --------------------FINISH ITERATION %d---------------------\n", Library::rank, iteration);
 
 		}
-		if (lib.rank == 0) {
+		if (Library::rank == 0) {
 			fTime << "iteration " << iteration << "::  " << std::chrono::duration<double, std::milli>(t_end - t_start).count() << " ms\n";
 		}
 		fLoading << "iteration " << iteration << "::  " << allTasks.size() << "\ttasks\n";
@@ -87,14 +87,14 @@ int main(int argc, char **argv) {
 	strftime(buffer, 80, "%H:%M:%S", timeinfo);
 	puts(buffer);
 	lib.LibraryInitialize(argc, argv, false);
-	if (lib.rank == 0) 	fTime << "servers's processes start in " << buffer << "\n";
+	if (Library::rank == 0) 	fTime << "servers's processes start in " << buffer << "\n";
 	GenerateBasicConcepts();
 	GenerateQueueOfTask(allTasks, map);
 	std::vector<int> tmp(map.size());
-	lib.map.resize(map.size());
-	MPI_Allreduce(map.data(), lib.map.data(), map.size(), MPI_INT, MPI_SUM, lib.currentComm);
+	Library::map.resize(map.size());
+	MPI_Allreduce(map.data(), Library::map.data(), map.size(), MPI_INT, MPI_SUM, Library::currentComm);
 	FindSolution();
-	GenerateResult(lib.currentComm);
+	GenerateResult(Library::currentComm);
 	MPI_Finalize();
 	fTime.close();
 	return 0;

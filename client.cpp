@@ -19,48 +19,48 @@ bool CheckConditions() {
 void FindSolution() {
 	MPI_Status st;
 	std::stringstream ss;
-	ss << rank;
+	ss << Library::rank;
 	std::string nameFile = "Loading" + ss.str();
 	nameFile += ".txt";
 	std::ofstream fLoading(nameFile);
 	if (client) {
-		MPI_Recv(&iteration, 1, MPI_INT, 0, 10005, lib.currentComm, &st);
+		MPI_Recv(&iteration, 1, MPI_INT, 0, 10005, Library::currentComm, &st);
 		client = false;
 	}
 	for (iteration = 0; iteration < maxiter && CheckConditions(); iteration++) {
-		/* if (rank_old == 0)*/ printf("%d::  --------------------START ITERATION %d---------------------\n", lib.rank, iteration);
+		/* if (rank_old == 0)*/ printf("%d::  --------------------START ITERATION %d---------------------\n", Library::rank, iteration);
 		for (auto &i : newResult) i = 0;
 		for (auto &i : oldResult) i = 0;
 
 		while (!allTasks.empty()) {
 			Task *t = dynamic_cast<Task*>(allTasks.front());
-			if (iteration != 0) t->ReceiveFromNeighbors(lib.currentComm);
-			lib.queueRecv.push(t);
+			if (iteration != 0) t->ReceiveFromNeighbors(Library::currentComm);
+			Library::queueRecv.push(t);
 			allTasks.pop();
 		}
 
-		while (!queueRecv.empty()) {
-			Task *t = dynamic_cast<Task*>(lib.queueRecv.front());
+		while (!Library::queueRecv.empty()) {
+			Task *t = dynamic_cast<Task*>(Library::queueRecv.front());
 			if (iteration != 0) t->WaitBorders();
-			pthread_mutex_lock(&lib.mutex_get_task);
-			lib.currentTasks.push(t);
-			pthread_mutex_unlock(&lib.mutex_get_task);
-			lib.queueRecv.pop();
+			pthread_mutex_lock(&Library::mutex_get_task);
+			Library::currentTasks.push(t);
+			pthread_mutex_unlock(&Library::mutex_get_task);
+			Library::queueRecv.pop();
 		}
-		fprintf(stderr, "%d:: count of tasks = %d\n", lib.rank, lib.currentTasks.size());
+		fprintf(stderr, "%d:: count of tasks = %d\n", Library::rank, Library::currentTasks.size());
 
 		lib.StartWork();
 				
-		GenerateResultOfIteration(lib.reduceComm);
+		GenerateResultOfIteration(Library::educeComm);
 
-		while (!queueRecv.empty()) {
-			Task *t = dynamic_cast<Task*>(lib.queueRecv.front());
-			t->SendToNeighbors(lib.currentComm);
+		while (!Library::queueRecv.empty()) {
+			Task *t = dynamic_cast<Task*>(Library::queueRecv.front());
+			t->SendToNeighbors(Library::currentComm);
 			allTasks.push(t);
-			lib.queueRecv.pop();
+			Library::queueRecv.pop();
 		}
 		fLoading << "iteration " << iteration << "::  " << allTasks.size() << "\ttasks\n";
-		if (lib.rank_old == 0) printf("%d:: --------------------FINISH ITERATION %d---------------------\n", lib.rank, iteration);
+		if (Library::rank_old == 0) printf("%d:: --------------------FINISH ITERATION %d---------------------\n", Library::rank, iteration);
 	}
 	lib.CloseLibraryComponents();
 	
@@ -70,11 +70,11 @@ void FindSolution() {
 int main(int argc, char **argv) {
 	time(&rawtime);
 	timeinfo = localtime(&rawtime);
-	if (rank == 0) {		
+	if (Library::rank == 0) {
 		strftime(buffer, 80, "%H:%M:%S", timeinfo);
 		puts(buffer);
 		std::stringstream ss;
-		ss << lib.numberOfConnection;
+		ss << Library::numberOfConnection;
 		std::string nameFile = "time_client" + ss.str();
 		nameFile += ".txt";
 		fTime.open(nameFile);
@@ -83,10 +83,10 @@ int main(int argc, char **argv) {
 	}
 	lib.LibraryInitialize(argc, argv, true);
 	// If work exist
-	if (map.size())	{
+	if (Library::map.size())	{
 		GenerateBasicConcepts();
 		FindSolution();
-		GenerateResult(lib.currentComm);
+		GenerateResult(Library::currentComm);
 	}
 	MPI_Finalize();
 	return 0;
