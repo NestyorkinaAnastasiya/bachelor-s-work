@@ -43,7 +43,7 @@ public:
 	~Task();
 };
 void GenerateBasicConcepts();
-void GenerateQueueOfTask();
+void GenerateQueueOfTask(std::queue<ITask*> &queueOTasks, std::vector<int> &map);
 void GenerateResult(MPI_Comm Comm);
 void GenerateResultOfIteration(MPI_Comm rComm);
 bool CheckConditions();

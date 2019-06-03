@@ -1,5 +1,5 @@
 #include "library.h"
-void* mapController(void* me) {
+void* Library::mapController(void* me) {
 	MPI_Comm Comm = currentComm;
 	MPI_Status st;
 	bool close = false;

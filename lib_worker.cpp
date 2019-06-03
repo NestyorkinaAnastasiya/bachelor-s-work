@@ -10,7 +10,7 @@ int GetRank(int &sign, int &k, int countOfProcess) {
 	else if (id < 0) id += countOfProcess;
 	return id;
 }
-void ExecuteOwnTasks() {
+void Library::ExecuteOwnTasks() {
 	ITask *currTask;
 	// Execution of own tasks
 	while (GetTask(&currTask)) {
@@ -22,7 +22,7 @@ void ExecuteOwnTasks() {
 		pthread_mutex_unlock(&mutex_set_task);
 	}
 }
-void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry) {
+void Library::ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry) {
 	// Send task request
 	int existTask = 0;
 	MPI_Send(&existTask, 1, MPI_INT, id, 2001, Comm);
@@ -43,7 +43,7 @@ void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry) {
 	}
 	else retry = false;
 }
-void ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
+void Library::ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
 	int message = 3;
 	MPI_Request req;
 	for (int i = 0; i < newSize; i++)
@@ -52,7 +52,7 @@ void ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
 	newSize = size;
 }
 // Computational thread
-void* worker(void* me) {
+void* Library::worker(void* me) {
 	bool close = false;
 	MPI_Status st;
 	MPI_Request reqCalc, reqChange;
@@ -102,7 +102,7 @@ void* worker(void* me) {
 	}
 	return 0;
 }
-void StartWork() {
+void Library::StartWork() {
 	MPI_Status st;
 	MPI_Request req;
 	startWork = true;

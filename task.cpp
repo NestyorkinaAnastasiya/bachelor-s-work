@@ -1,6 +1,5 @@
 #include "task.h"
 double eps = 1e-8;
-double residual = 1;
 int dim;
 // Шаги сетки
 double	hx = 0.1,
@@ -15,12 +14,10 @@ hy = 0.5,
 hz = 0.5;*/
 int countOfBlockY = 4,
 countOfBlockZ = 4;
-// Координаты начала и конца области
 double	begX = 0, endX = 2,
 begY = 0, endY = 2,
 begZ = 0, endZ = 2;
 MPI_Datatype MPI_POINT;
-// Количество интервалов по координате
 int intervalsX, intervalsY, intervalsZ;
 std::vector<Task> t;
 void Task::Clear() {
@@ -49,7 +46,6 @@ Task::~Task() {
 	numbersOfKU.clear();
 }
 
-// Функция принадлежности узла node теневой границе
 bool Task::BelongToShadowBorders(int node) {
 	for (int i = 0; i < 6; i++)
 		for (int j = 0; j < shadowBorders[i].size(); j++)
@@ -57,7 +53,6 @@ bool Task::BelongToShadowBorders(int node) {
 	return false;
 }
 
-// Функция принадлежности узла node краевым условиям
 bool Task::BelongToKU(int node) {
 	for (int i = 0; i < numbersOfKU.size(); i++)
 		if (numbersOfKU[i] == node) return true;
@@ -324,7 +319,7 @@ void GenerateBasicConcepts() {
 	globalOldRes.resize(dim);
 }
 
-void GenerateQueueOfTask() {
+void GenerateQueueOfTask(std::queue<ITask*> &queueOTasks, std::vector<int> &map) {
 	double	l;
 	double x, y, z;
 	std::vector<int> globalNumbersOfKU;
@@ -468,7 +463,7 @@ void GenerateQueueOfTask() {
 				t[i].bordersRecv[j].resize(t[i].shadowBorders[j].size());
 				for (auto &el : t[i].bordersSend[j]) el = 1;
 			}
-		allTasks.push(&t[i]);
+		queueOTasks.push(&t[i]);
 	}
 }
 

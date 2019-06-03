@@ -1,6 +1,6 @@
 #include "library.h"
 
-void CreateLibraryComponents() {	
+void Library::CreateLibraryComponents() {
 	MPI_Comm_dup(currentComm, &serverComm);
 	MPI_Comm_dup(currentComm, &reduceComm);
 	// Create dispatcher
@@ -26,7 +26,7 @@ void CreateLibraryComponents() {
 		}
 }
 
-void LibraryInitialize(int argc, char **argv, bool clientProgram) {
+void Library::LibraryInitialize(int argc, char **argv, bool clientProgram) {
 	int provided = MPI_THREAD_SINGLE;
 	MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
 	if (provided != MPI_THREAD_MULTIPLE) {
@@ -120,7 +120,7 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 	else CreateLibraryComponents();
 }
 
-void CloseLibraryComponents() {
+void Library::CloseLibraryComponents() {
 	MPI_Status st;
 	MPI_Request s;
 	int exit = -1;
