@@ -50,7 +50,7 @@ class Library {
 	static void* worker(void* me);
 	static void* mapController(void* me);
 	static void* server(void *me);
-	bool GetTask(ITask **currTask) {
+	static bool GetTask(ITask **currTask) {
 		pthread_mutex_lock(&mutex_get_task);
 		if (currentTasks.empty()) {
 			pthread_mutex_unlock(&mutex_get_task);
