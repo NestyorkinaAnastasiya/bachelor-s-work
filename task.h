@@ -6,7 +6,6 @@ std::vector<double> oldResult, newResult;
 std::vector <double> globalRes;
 std::vector <double> globalOldRes;
 int iteration = 0;
-double residual = 1;
 struct Point {
 	double x, y, z;
 	int globalNumber;
@@ -47,4 +46,3 @@ void GenerateBasicConcepts();
 void GenerateQueueOfTask(std::queue<ITask*> &queueOTasks, std::vector<int> &map);
 void GenerateResult(MPI_Comm Comm);
 void GenerateResultOfIteration(MPI_Comm rComm);
-bool CheckConditions();

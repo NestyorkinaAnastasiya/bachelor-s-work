@@ -1,5 +1,4 @@
 #include "task.h"
-double eps = 1e-8;
 int dim;
 // Шаги сетки
 double	hx = 0.1,
@@ -501,7 +500,3 @@ void GenerateResultOfIteration(MPI_Comm rComm) {
 	residual = sqrt(residual);
 }
 
-bool CheckConditions() {
-	if (residual > eps) return true;
-	else return false;
-}

@@ -75,14 +75,16 @@ public:
 	int rank, size;
 	int rank_old, size_old;
 	std::vector<int> map;
-	int countOfConnect = 2;
+	static int countOfConnect = 2;
 	bool changeExist = false;
 	std::queue<ITask*> currentTasks, queueRecv, sendedTasks;
 	// Communicators
-	MPI_Comm currentComm = MPI_COMM_WORLD;
-	MPI_Comm oldComm, newComm, serverComm, reduceComm;
+	static MPI_Comm currentComm;
+	static MPI_Comm oldComm, newComm, serverComm, reduceComm;
 	void LibraryInitialize(int argc, char **argv, bool clientProgram);
 	void CreateLibraryComponents();
 	void StartWork();
 	void CloseLibraryComponents();
 };
+int Library::countOfConnect = 2;
+MPI_Comm Library::currentComm = MPI_COMM_WORLD;

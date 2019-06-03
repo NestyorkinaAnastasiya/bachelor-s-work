@@ -7,7 +7,15 @@ time_t rawtime;
 struct tm * timeinfo;
 
 char buffer[80];
+
+double residual = 1;
+double eps = 1e-8;
 Library lib;
+
+bool CheckConditions() {
+	if (residual > eps) return true;
+	else return false;
+}
 void FindSolution() {	
 	MPI_Status st;
 	
@@ -18,7 +26,7 @@ void FindSolution() {
 	std::ofstream fLoading(nameFile);
 
 	for (iteration = 0; iteration < maxiter && CheckConditions(); iteration++) {
-		if (lib.rank == 0) printf("%d::  --------------------START ITERATION %d---------------------\n", rank, iteration);
+		if (lib.rank == 0) printf("%d::  --------------------START ITERATION %d---------------------\n", lib.rank, iteration);
 		for (auto &i : newResult) i = 0;
 		for (auto &i : oldResult) i = 0;
 		auto t_start = std::chrono::high_resolution_clock::now();
@@ -44,7 +52,7 @@ void FindSolution() {
 
 		if (lib.changeExist) {
 			lib.changeExist = false;
-			if (rank == 0)
+			if (lib.rank == 0)
 				for (int k = lib.size_old; k < lib.size; k++)
 					MPI_Send(&iteration, 1, MPI_INT, k, 10005, lib.currentComm);
 		}
@@ -60,7 +68,7 @@ void FindSolution() {
 		auto t_end = std::chrono::high_resolution_clock::now();
 		if (lib.rank == 0) {
 			printf("%d:: res = %e\n", lib.rank, residual);
-			printf("%d:: --------------------FINISH ITERATION %d---------------------\n", rank, iteration);
+			printf("%d:: --------------------FINISH ITERATION %d---------------------\n", lib.rank, iteration);
 
 		}
 		if (lib.rank == 0) {
@@ -84,7 +92,7 @@ int main(int argc, char **argv) {
 	GenerateQueueOfTask(allTasks, map);
 	std::vector<int> tmp(map.size());
 	lib.map.resize(map.size());
-	MPI_Allreduce(map.data(), lib.map.data(), map.size(), MPI_INT, MPI_SUM, currentComm);
+	MPI_Allreduce(map.data(), lib.map.data(), map.size(), MPI_INT, MPI_SUM, lib.currentComm);
 	FindSolution();
 	GenerateResult(lib.currentComm);
 	MPI_Finalize();

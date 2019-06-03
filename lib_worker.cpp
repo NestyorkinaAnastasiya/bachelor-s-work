@@ -1,5 +1,5 @@
 #include "task.h"
-int GetRank(int &sign, int &k, int countOfProcess) {
+int Library::GetRank(int &sign, int &k, int countOfProcess) {
 	if (sign == 1) {
 		sign = -1;
 		k++;

@@ -7,6 +7,15 @@ struct tm * timeinfo;
 
 char buffer[80];
 std::ofstream fTime;
+
+double residual = 1;
+double eps = 1e-8;
+Library lib;
+
+bool CheckConditions() {
+	if (residual > eps) return true;
+	else return false;
+}
 void FindSolution() {
 	MPI_Status st;
 	std::stringstream ss;
@@ -19,7 +28,7 @@ void FindSolution() {
 		client = false;
 	}
 	for (iteration = 0; iteration < maxiter && CheckConditions(); iteration++) {
-		/* if (rank_old == 0)*/ printf("%d::  --------------------START ITERATION %d---------------------\n", rank, iteration);
+		/* if (rank_old == 0)*/ printf("%d::  --------------------START ITERATION %d---------------------\n", lib.rank, iteration);
 		for (auto &i : newResult) i = 0;
 		for (auto &i : oldResult) i = 0;
 
