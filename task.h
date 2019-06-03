@@ -1,4 +1,10 @@
 #include "library.h"
+// Максимальное кол-во итераций
+int maxiter = 10000;
+std::vector<double> oldResult, newResult;
+std::vector <double> globalRes;
+std::vector <double> globalOldRes;
+int iteration = 0;
 struct Point {
 	double x, y, z;
 	int globalNumber;
@@ -35,3 +41,8 @@ public:
 	void GenerateSend(int reciever, MPI_Comm Comm);
 	~Task();
 };
+void GenerateBasicConcepts();
+void GenerateQueueOfTask();
+void GenerateResult(MPI_Comm Comm);
+void GenerateResultOfIteration(MPI_Comm rComm);
+bool CheckConditions();

@@ -1,6 +1,4 @@
 #include "task.h"
-// Максимальное кол-во итераций
-int maxiter = 10000;
 double eps = 1e-8;
 double residual = 1;
 int dim;
@@ -22,10 +20,6 @@ double	begX = 0, endX = 2,
 begY = 0, endY = 2,
 begZ = 0, endZ = 2;
 MPI_Datatype MPI_POINT;
-std::vector<double> oldResult, newResult;
-std::vector <double> globalRes;
-std::vector <double> globalOldRes;
-int iteration = 0;
 // Количество интервалов по координате
 int intervalsX, intervalsY, intervalsZ;
 std::vector<Task> t;

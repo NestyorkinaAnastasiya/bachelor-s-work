@@ -1,4 +1,4 @@
-#include "task.cpp"
+#include "task.h"
 std::ofstream fTime;
 void FindSolution() {	
 	MPI_Status st;
