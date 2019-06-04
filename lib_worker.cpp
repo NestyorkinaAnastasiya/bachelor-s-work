@@ -58,13 +58,13 @@ void* worker(void* me) {
 	MPI_Status st;
 	MPI_Request reqCalc, reqChange;
 	MPI_Comm Comm = currentComm;
-	int flagChange = false, flagCalc = false;
+	int flagChange = 0, flagCalc = 0;
 	int cond, message;
 	// Get message from own rank
 	MPI_Irecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);	
+	MPI_Irecv(&cond, 1, MPI_INT, rank, 1999, Comm, &reqCalc);
 	int countOfProcess, newSize = size;	
 	while (!close) {
-		MPI_Irecv(&cond, 1, MPI_INT, rank, 1999, Comm, &reqCalc);
 		while (!flagChange || !flagCalc) {
 			MPI_Test(&reqChange, &flagChange, &st);
 			MPI_Test(&reqCalc, &flagCalc, &st);
@@ -100,6 +100,7 @@ void* worker(void* me) {
 				}
 				MPI_Send(&cond, 1, MPI_INT, rank, 1999, Comm);
 				fprintf(stderr, "%d:: worker finished job.\n", rank);
+				MPI_Irecv(&cond, 1, MPI_INT, rank, 1999, Comm, &reqCalc);
 			}
 			else if (cond == -1) close = true;
 			flagCalc = false;
