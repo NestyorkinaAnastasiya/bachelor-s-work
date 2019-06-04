@@ -54,6 +54,7 @@ void ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
 }
 // Computational thread
 void* worker(void* me) {
+	fprintf(stderr, "%d:: worker run.\n", rank);
 	bool close = false;
 	MPI_Status st;
 	MPI_Request reqCalc, reqChange;
@@ -69,14 +70,14 @@ void* worker(void* me) {
 			MPI_Test(&reqChange, &flagChange, &st);
 			MPI_Test(&reqCalc, &flagCalc, &st);
 		}
-		if (flagChange) {
+		if (flagChange != 0) {
 			fprintf(stderr, "%d:: worker is changing communicator.\n", rank);
 			ChangeCommunicator(Comm, newSize);
 			MPI_Irecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
 			fprintf(stderr, "%d:: worker finished changing communicator.\n", rank);
 			flagChange = false;
 		}
-		if (flagCalc){
+		if (flagCalc! = 0){
 			if (cond == 1) {
 				fprintf(stderr, "%d:: worker is executing own tasks.\n", rank);
 				ExecuteOwnTasks();
@@ -113,8 +114,7 @@ void StartWork() {
 	MPI_Request req;
 	int cond = 1, message = 1;
 	for (int i = 0; i < countOfWorkers; i++)
-		MPI_Isend(&message, 1, MPI_INT, rank, 1999, currentComm, &req);
-	
+		MPI_Send(&message, 1, MPI_INT, rank, 1999, currentComm);
 	int count = 0, countOfConnectedWorkers = 0;
 	bool connection = false;
 	while (count < countOfWorkers || connection) {
