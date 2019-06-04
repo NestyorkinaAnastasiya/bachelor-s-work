@@ -13,17 +13,17 @@ void CreateLibraryComponents() {
 		perror("Cannot create a thread");
 		abort();
 	}
-	// Create server
-	if (0 != pthread_create(&thrs[countOfWorkers + 2], &attrs_server, server, &ids[countOfWorkers + 2])) {
-		perror("Cannot create a thread");
-		abort();
-	}
 	// Create computational treads
 	for (int i = 0; i < countOfWorkers; i++)
 		if (0 != pthread_create(&thrs[i], &attrs_workers, worker, &ids[i])) {
 			perror("Cannot create a thread");
 			abort();
 		}
+	// Create server
+	if (0 != pthread_create(&thrs[countOfWorkers + 2], &attrs_server, server, &ids[countOfWorkers + 2])) {
+		perror("Cannot create a thread");
+		abort();
+	}
 }
 
 void LibraryInitialize(int argc, char **argv, bool clientProgram) {
@@ -33,8 +33,8 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 		std::cerr << "not MPI_THREAD_MULTIPLE";
 		exit(0);
 	}
-	if (rank == 0) printf("%d:: start init.....\n", rank, iteration);
 	MPI_Comm_rank(currentComm, &rank);
+	if (rank == 0) fprintf(stderr, "%d:: start init.....\n", rank, iteration);
 	MPI_Comm_size(currentComm, &size);
 	pthread_mutexattr_init(&attr_get_task);
 	pthread_mutex_init(&mutex_get_task, &attr_get_task);	
@@ -78,7 +78,7 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 		perror("Error in setting attributes");
 		abort();
 	}
-	if (rank == 0) printf("%d:: finish init.....\n", rank, iteration);
+	if (rank == 0) fprintf(stderr, "%d:: finish init.....\n", rank, iteration);
 	if (clientProgram) {
 		MPI_Comm server;
 		MPI_Status st;
@@ -121,9 +121,9 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 		}
 	}	
 	else {
-		if (rank == 0) printf("%d:: create library components....\n", rank, iteration);
+		if (rank == 0) fprintf(stderr, "%d:: create library components....\n", rank, iteration);
 		CreateLibraryComponents();
-		if (rank == 0) printf("%d:: finish creating library components....\n", rank, iteration);
+		if (rank == 0) fprintf(stderr, "%d:: finish creating library components....\n", rank, iteration);
 	}
 }
 
