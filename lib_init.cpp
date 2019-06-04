@@ -78,7 +78,7 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 		perror("Error in setting attributes");
 		abort();
 	}
-	if (rank == 0) fprintf(stderr, "%d:: finish init.....\n", rank, iteration);
+	if (rank == 0) fprintf(stderr, "%d:: finish init.....\n", rank);
 	if (clientProgram) {
 		MPI_Comm server;
 		MPI_Status st;
@@ -112,20 +112,20 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 			MPI_Recv(map.data(), sizeOfMap, MPI_INT, 0, 10001, currentComm, &st);
 			for (int i = 0; i < map.size(); i++)
 				printf("%d; ", map[i]);
-			if (rank == 0) printf("%d:: create library components....\n", rank, iteration);
-			if (rank == 0) printf("%d:: finish creating library components....\n", rank, iteration);
-		//	MPI_Comm_dup(currentComm, &serverComm);
+			//	MPI_Comm_dup(currentComm, &serverComm);
 			MPI_Comm_dup(currentComm, &reduceComm);
 			// All server's ranks change their comunicators
 			MPI_Recv(&sizeOfMap, 1, MPI_INT, 0, 10003, currentComm, &st);
+			fprintf(stderr, "%d:: create library components....\n", rank);
 			CreateLibraryComponents();
+			fprintf(stderr, "%d:: finish creating library components....\n", rank);
 		}
 	}	
 	else {
-		if (rank == 0) fprintf(stderr, "%d:: create library components....\n", rank, iteration);
+		fprintf(stderr, "%d:: create library components....\n", rank);
 		MPI_Comm_dup(currentComm, &reduceComm);
 		CreateLibraryComponents();
-		if (rank == 0) fprintf(stderr, "%d:: finish creating library components....\n", rank, iteration);
+		fprintf(stderr, "%d:: finish creating library components....\n", rank);
 	}
 }
 
@@ -149,7 +149,7 @@ void CloseLibraryComponents() {
 			for (int k = size_old; k < size_new; k++)
 				MPI_Send(&cond, 1, MPI_INT, k, 10000, newComm);
 		}
-		cond = 1;
+		//cond = 1;
 		//MPI_Isend(&cond, 1, MPI_INT, rank, 1998, currentComm, &s);
 	}
 	// Close server

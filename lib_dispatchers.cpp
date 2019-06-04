@@ -47,6 +47,7 @@ void* dispatcher_old(void* me) {
 
 // Dispatcher
 void* dispatcher(void* me) {
+	fprintf(stderr, "%d:: dispatcher run.\n", rank);
 	MPI_Comm Comm = currentComm;
 	ITask *t;
 	int cond;
@@ -98,5 +99,6 @@ void* dispatcher(void* me) {
 		} // Close dispatcher 
 		else if (cond == -1) close = true;
 	}
+	fprintf(stderr, "%d:: dispatcher close.\n", rank);
 	return 0;
 }

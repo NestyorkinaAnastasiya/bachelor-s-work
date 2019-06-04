@@ -46,10 +46,10 @@ void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry) {
 void ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
 	int message = 3;
 	MPI_Request req;
-	for (int i = 0; i < newSize; i++)
-		MPI_Isend(&message, 1, MPI_INT, i, 1999, Comm, &req);
-	Comm = newComm;
 	newSize = size;
+	Comm = newComm;
+	// The message about finished changing of communicator
+	MPI_Isend(&message, 1, MPI_INT, i, 1999, Comm, &req);
 }
 // Computational thread
 void* worker(void* me) {
@@ -69,18 +69,22 @@ void* worker(void* me) {
 			MPI_Test(&reqCalc, &flagCalc, &st);
 		}
 		if (flagChange) {
+			fprintf(stderr, "%d:: worker is changing communicator.\n", rank);
 			ChangeCommunicator(Comm, newSize);
 			MPI_Irecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
+			fprintf(stderr, "%d:: worker finished changing communicator.\n", rank);
 			flagChange = false;
 		}
 		if (flagCalc){
 			if (cond == 1) {
+				fprintf(stderr, "%d:: worker is executing own tasks.\n", rank);
 				ExecuteOwnTasks();
 				countOfProcess = newSize;
 				// If new ranks comes, their queue is empty	
 				int sign = 1, id, k = 0;
 				bool retry = false;
 				// Task request from another ranks
+				fprintf(stderr, "%d:: worker is executing another tasks.\n", rank);
 				for (int i = 0; i < countOfProcess - 1; i++) {
 					// If request from next rank
 					if (!retry)	id = GetRank(sign, k, countOfProcess);
@@ -94,6 +98,7 @@ void* worker(void* me) {
 					if (retry) i--;
 				}
 				MPI_Send(&cond, 1, MPI_INT, rank, 1999, Comm);
+				fprintf(stderr, "%d:: worker finished job.\n", rank);
 			}
 			else if (cond == -1) close = true;
 			flagCalc = false;
@@ -122,6 +127,7 @@ void StartWork() {
 		}
 		else if (count == 3) {
 			countOfConnectedWorkers++;
+			fprintf(stderr, "%d:: %d connected workers.\n", rank, countOfConnectedWorkers);
 			if (countOfConnectedWorkers == size_old * countOfWorkers) {
 				changeExist = true;
 				cond = 4;				
@@ -137,6 +143,7 @@ void StartWork() {
 				changeComm = false;
 				//MPI_Isend(&cond, 1, MPI_INT, rank, 1998, currentComm, &req);
 				connection = false;
+				fprintf(stderr, "%d:: connection is done.\n", rank);
 			}
 		}
 		else count++;
@@ -147,5 +154,5 @@ void StartWork() {
 		t->Clear();
 		sendedTasks.pop();
 	}
-	fprintf(stderr, "%d:: work has done\n", rank);
+	fprintf(stderr, "%d:: calculations are done\n", rank);
 }
