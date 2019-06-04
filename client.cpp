@@ -48,7 +48,7 @@ void FindSolution() {
 
 		StartWork();
 				
-		GenerateResultOfIteration(educeComm);
+		GenerateResultOfIteration(reduceComm);
 
 		while (!queueRecv.empty()) {
 			Task *t = dynamic_cast<Task*>(queueRecv.front());
