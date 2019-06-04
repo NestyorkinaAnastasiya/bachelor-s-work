@@ -77,7 +77,7 @@ void* worker(void* me) {
 			fprintf(stderr, "%d:: worker finished changing communicator.\n", rank);
 			flagChange = false;
 		}
-		if (flagCalc! = 0){
+		if (flagCalc != 0){
 			if (cond == 1) {
 				fprintf(stderr, "%d:: worker is executing own tasks.\n", rank);
 				ExecuteOwnTasks();
