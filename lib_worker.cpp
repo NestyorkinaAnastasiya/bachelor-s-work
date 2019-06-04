@@ -66,10 +66,8 @@ void* worker(void* me) {
 	MPI_Irecv(&cond, 1, MPI_INT, rank, 1999, Comm, &reqCalc);
 	int countOfProcess, newSize = size;	
 	while (!close) {
-		while (flagChange == 0 || flagCalc == 0) {
-			MPI_Test(&reqChange, &flagChange, &st);
-			MPI_Test(&reqCalc, &flagCalc, &st);
-		}
+		MPI_Test(&reqChange, &flagChange, &st);
+		MPI_Test(&reqCalc, &flagCalc, &st);
 		if (flagChange != 0) {
 			fprintf(stderr, "%d:: worker is changing communicator.\n", rank);
 			ChangeCommunicator(Comm, newSize);
