@@ -46,10 +46,11 @@ void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry) {
 void ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
 	int message = 3;
 	MPI_Request req;
-	newSize = size;
 	Comm = newComm;
 	// The message about finished changing of communicator
-	MPI_Isend(&message, 1, MPI_INT, i, 1999, Comm, &req);
+	for (int i = 0; i < newSize; i++)
+		MPI_Isend(&message, 1, MPI_INT, i, 1999, Comm, &req);
+	newSize = size;
 }
 // Computational thread
 void* worker(void* me) {
