@@ -23,12 +23,12 @@ void FindSolution() {
 	
 	StartWork();
 
-	MPI_Recv(&iteration, 1, MPI_INT, 0, 10005, currentComm, &st);
+	MPI_Recv(&iteration, 1, MPI_INT, 0, 10005, reduceComm, &st);
 	client = false;
 	GenerateResultOfIteration(reduceComm);
 	while (!queueRecv.empty()) {
 		Task *t = dynamic_cast<Task*>(queueRecv.front());
-		t->SendToNeighbors(currentComm);
+		t->SendToNeighbors(reduceComm);
 		allTasks.push(t);
 		queueRecv.pop();
 	}
@@ -39,7 +39,7 @@ void FindSolution() {
 
 		while (!allTasks.empty()) {
 			Task *t = dynamic_cast<Task*>(allTasks.front());
-			if (iteration != 0) t->ReceiveFromNeighbors(currentComm);
+			if (iteration != 0) t->ReceiveFromNeighbors(reduceComm);
 			queueRecv.push(t);
 			allTasks.pop();
 		}
@@ -60,7 +60,7 @@ void FindSolution() {
 
 		while (!queueRecv.empty()) {
 			Task *t = dynamic_cast<Task*>(queueRecv.front());
-			t->SendToNeighbors(currentComm);
+			t->SendToNeighbors(reduceComm);
 			allTasks.push(t);
 			queueRecv.pop();
 		}
@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
 	if (map.size())	{
 		GenerateBasicConcepts();
 		FindSolution();
-		GenerateResult(currentComm);
+		GenerateResult(reduceComm);
 	}
 	MPI_Finalize();
 	return 0;

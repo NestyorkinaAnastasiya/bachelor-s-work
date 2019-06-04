@@ -28,7 +28,7 @@ void FindSolution() {
 		auto t_start = std::chrono::high_resolution_clock::now();
 		while (!allTasks.empty()) {
 			Task *t = dynamic_cast<Task*>(allTasks.front());
-			if (iteration != 0) t->ReceiveFromNeighbors(currentComm);
+			if (iteration != 0) t->ReceiveFromNeighbors(reduceComm);
 			queueRecv.push(t);
 			allTasks.pop();
 		}
@@ -50,14 +50,14 @@ void FindSolution() {
 			changeExist = false;
 			if (rank == 0)
 				for (int k = size_old; k < size; k++)
-					MPI_Send(&iteration, 1, MPI_INT, k, 10005, currentComm);
+					MPI_Send(&iteration, 1, MPI_INT, k, 10005, reduceComm);
 		}
 		fprintf(stderr, "%d:: get to generate result of iteration\n", rank);
 		GenerateResultOfIteration(reduceComm);
 
 		while (!queueRecv.empty()) {
 			Task *t = dynamic_cast<Task*>(queueRecv.front());
-			t->SendToNeighbors(currentComm);
+			t->SendToNeighbors(reduceComm);
 			queueRecv.pop();
 			allTasks.push(t);
 		}
@@ -88,10 +88,10 @@ int main(int argc, char **argv) {
 	GenerateQueueOfTask(allTasks, map);
 	std::vector<int> tmp(map.size());
 	map.resize(map.size());
-	MPI_Allreduce(map.data(), tmp.data(), map.size(), MPI_INT, MPI_SUM, currentComm);
+	MPI_Allreduce(map.data(), tmp.data(), map.size(), MPI_INT, MPI_SUM, reduceComm);
 	map = tmp;
 	FindSolution();
-	GenerateResult(currentComm);
+	GenerateResult(reduceComm);
 	MPI_Finalize();
 	fTime.close();
 	return 0;

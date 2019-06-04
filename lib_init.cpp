@@ -45,7 +45,7 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 	pthread_mutex_init(&comunicator_mutexcond, NULL);
 	pthread_cond_init(&server_cond, NULL);
 	pthread_cond_init(&comunicator_cond, NULL);
-
+	newComm = currentComm;
 	if (0 != pthread_attr_init(&attrs_workers)) {
 		perror("Cannot initialize attributes");
 		abort();
@@ -115,7 +115,7 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 			MPI_Comm_dup(currentComm, &serverComm);
 			MPI_Comm_dup(currentComm, &reduceComm);
 			// All server's ranks change their comunicators
-			MPI_Recv(&sizeOfMap, 1, MPI_INT, 0, 10003, currentComm, &st);
+			//MPI_Recv(&sizeOfMap, 1, MPI_INT, 0, 10003, currentComm, &st);
 			fprintf(stderr, "%d:: create library components....\n", rank);
 			CreateLibraryComponents();
 			fprintf(stderr, "%d:: finish creating library components....\n", rank);

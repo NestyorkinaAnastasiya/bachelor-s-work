@@ -110,6 +110,7 @@ void* worker(void* me) {
 void StartWork() {
 	MPI_Status st;
 	MPI_Request req;
+	bool dup = false;
 	int cond = 1, message = 1;
 	for (int i = 0; i < countOfWorkers; i++)
 		MPI_Send(&message, 1, MPI_INT, rank, 1999, currentComm);
@@ -124,6 +125,7 @@ void StartWork() {
 				MPI_Send(&cond, 1, MPI_INT, rank_old, 1997, currentComm);
 			MPI_Comm_dup(newComm, &serverComm);
 			MPI_Comm_dup(newComm, &reduceComm);
+			dup = true;
 		}
 		else if (count == 3) {
 			countOfConnectedWorkers++;
@@ -147,6 +149,10 @@ void StartWork() {
 			}
 		}
 		else count++;
+	}
+	if (!dup) {
+		MPI_Comm_dup(newComm, &serverComm);
+		MPI_Comm_dup(newComm, &reduceComm);
 	}
 	// Clear the memory
 	while (!sendedTasks.empty()) {
