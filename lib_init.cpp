@@ -33,6 +33,7 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 		std::cerr << "not MPI_THREAD_MULTIPLE";
 		exit(0);
 	}
+	if (rank == 0) printf("%d:: start init.....\n", rank, iteration);
 	MPI_Comm_rank(currentComm, &rank);
 	MPI_Comm_size(currentComm, &size);
 	pthread_mutexattr_init(&attr_get_task);
@@ -77,6 +78,7 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 		perror("Error in setting attributes");
 		abort();
 	}
+	if (rank == 0) printf("%d:: finish init.....\n", rank, iteration);
 	if (clientProgram) {
 		MPI_Comm server;
 		MPI_Status st;
@@ -110,12 +112,19 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 			MPI_Recv(map.data(), sizeOfMap, MPI_INT, 0, 10001, currentComm, &st);
 			for (int i = 0; i < map.size(); i++)
 				printf("%d; ", map[i]);
+			if (rank == 0) printf("%d:: create library components....\n", rank, iteration);
 			CreateLibraryComponents();
+			if (rank == 0) printf("%d:: finish creating library components....\n", rank, iteration);
+
 			// All server's ranks change their comunicators
 			MPI_Recv(&sizeOfMap, 1, MPI_INT, 0, 10003, currentComm, &st);
 		}
+	}	
+	else {
+		if (rank == 0) printf("%d:: create library components....\n", rank, iteration);
+		CreateLibraryComponents();
+		if (rank == 0) printf("%d:: finish creating library components....\n", rank, iteration);
 	}
-	else CreateLibraryComponents();
 }
 
 void CloseLibraryComponents() {
