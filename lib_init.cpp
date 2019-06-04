@@ -150,7 +150,7 @@ void CloseLibraryComponents() {
 				MPI_Send(&cond, 1, MPI_INT, k, 10000, newComm);
 		}
 		cond = 1;
-		MPI_Isend(&cond, 1, MPI_INT, rank, 1998, currentComm, &s);
+		//MPI_Isend(&cond, 1, MPI_INT, rank, 1998, currentComm, &s);
 	}
 	// Close server
 	pthread_join(thrs[countOfWorkers + 2], NULL);
