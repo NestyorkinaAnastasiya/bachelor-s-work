@@ -113,15 +113,18 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 			for (int i = 0; i < map.size(); i++)
 				printf("%d; ", map[i]);
 			if (rank == 0) printf("%d:: create library components....\n", rank, iteration);
-			CreateLibraryComponents();
 			if (rank == 0) printf("%d:: finish creating library components....\n", rank, iteration);
-
+			MPI_Comm_dup(currentComm, &serverComm);
+			MPI_Comm_dup(currentComm, &reduceComm);
 			// All server's ranks change their comunicators
 			MPI_Recv(&sizeOfMap, 1, MPI_INT, 0, 10003, currentComm, &st);
+			CreateLibraryComponents();
 		}
 	}	
 	else {
 		if (rank == 0) fprintf(stderr, "%d:: create library components....\n", rank, iteration);
+		MPI_Comm_dup(currentComm, &serverComm);
+		MPI_Comm_dup(currentComm, &reduceComm);
 		CreateLibraryComponents();
 		if (rank == 0) fprintf(stderr, "%d:: finish creating library components....\n", rank, iteration);
 	}
