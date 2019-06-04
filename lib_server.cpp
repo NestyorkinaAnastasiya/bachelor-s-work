@@ -33,10 +33,8 @@ void* server(void *me) {
 		if (rank == 0)
 			for (int k = old_size; k < new_size; k++)
 				MPI_Send(&numberOfConnection, 1, MPI_INT, k, 10002, newComm);
-
 		// Send to dispatcher message about new communicator
 		MPI_Send(&message, 1, MPI_INT, rank, 2001, currentComm);
-		int k = pthread_cond_wait(&server_cond, &server_mutexcond);
 		// The previous connection must be finished
 		MPI_Recv(&cond, 1, MPI_INT, rank, 1998, oldComm, &st);
 	}
