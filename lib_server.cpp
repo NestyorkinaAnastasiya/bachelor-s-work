@@ -15,11 +15,7 @@ void* server(void *me) {
 		fPort.close();
 	}
 	for (; numberOfConnection < countOfConnect; ) {
-		// The previous connection must be finished
-		if (blockConnection)
-			MPI_Recv(&cond, 1, MPI_INT, rank, 1998, newComm, &st);
 		old_size = size;
-
 		// Waiting for new ranks
 		MPI_Comm_accept(port_name, MPI_INFO_NULL, 0, serverComm, &client);
 		oldComm = currentComm;
@@ -38,7 +34,8 @@ void* server(void *me) {
 		// Send to dispatcher message about new communicator
 		MPI_Send(&message, 1, MPI_INT, rank, 2001, currentComm);
 		int k = pthread_cond_wait(&server_cond, &server_mutexcond);
-		blockConnection = true;
+		// The previous connection must be finished
+		MPI_Recv(&cond, 1, MPI_INT, rank, 1998, newComm, &st);
 	}
 	return 0;
 }
