@@ -17,6 +17,7 @@ void* server(void *me) {
 	}
 	for (; numberOfConnection < countOfConnect; ) {
 		MPI_Comm_dup(newComm, &serverComm);
+		fprintf(stderr, "%d:: server are ready for connection.\n", rank);
 		old_size = size;
 		// Waiting for new ranks
 		MPI_Comm_accept(port_name, MPI_INFO_NULL, 0, serverComm, &client);

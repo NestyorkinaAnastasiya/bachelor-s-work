@@ -89,12 +89,12 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 		for (int i = 0; i < MPI_MAX_PORT_NAME; i++)
 		fPort >> port_name[i];
 		fPort.close();
-		fprintf(stderr, "%d::port exist\n", rank);
+		fprintf(stderr, "%d:: port exist\n", rank);
 
 		MPI_Comm_connect(port_name, MPI_INFO_NULL, 0, currentComm, &server);
 		MPI_Intercomm_merge(server, true, &currentComm);
 
-		fprintf(stderr, "%d::connect to server success\n", rank);
+		fprintf(stderr, "%d:: connect to server success\n", rank);
 
 		rank_old = rank;
 		MPI_Comm_rank(currentComm, &rank);
@@ -120,6 +120,7 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 			CreateLibraryComponents();
 			fprintf(stderr, "%d:: finish creating library components....\n", rank);
 		}
+		else if (numberOfConnection < countOfConnect-1) MPI_Comm_dup(newComm, &serverComm);
 	}	
 	else {
 		fprintf(stderr, "%d:: create library components....\n", rank);

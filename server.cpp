@@ -52,7 +52,7 @@ void FindSolution() {
 				for (int k = size_old; k < size; k++)
 					MPI_Send(&iteration, 1, MPI_INT, k, 10005, currentComm);
 		}
-		fprintf(stderr, "%d::get to generate result of iteration\n", rank);
+		fprintf(stderr, "%d:: get to generate result of iteration\n", rank);
 		GenerateResultOfIteration(reduceComm);
 
 		while (!queueRecv.empty()) {
