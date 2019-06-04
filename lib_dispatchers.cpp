@@ -1,5 +1,5 @@
-#include "library.h"
-void Library::SendTask(MPI_Status &st, MPI_Comm &CommWorker, MPI_Comm &CommMap){
+#include "lib_worker.cpp"
+void SendTask(MPI_Status &st, MPI_Comm &CommWorker, MPI_Comm &CommMap){
 	// reciever rank
 	int peer = st.MPI_SOURCE;
 	int send = 0;
@@ -24,7 +24,7 @@ void Library::SendTask(MPI_Status &st, MPI_Comm &CommWorker, MPI_Comm &CommMap){
 }
 
 // Dispatcher for work in old communicator (only tasks sending) 
-void* Library::dispatcher_old(void* me) {
+void* dispatcher_old(void* me) {
 	fprintf(stderr, "%d::dispetcher_old run\n", rank);	
 	MPI_Request req;
 	MPI_Comm oldComm_ = currentComm, newComm_ = newComm;
@@ -46,7 +46,7 @@ void* Library::dispatcher_old(void* me) {
 }
 
 // Dispatcher
-void* Library::dispatcher(void* me) {
+void* dispatcher(void* me) {
 	MPI_Comm Comm = currentComm;
 	ITask *t;
 	int cond;

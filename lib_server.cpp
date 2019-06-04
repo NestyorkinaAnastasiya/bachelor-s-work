@@ -1,5 +1,5 @@
-#include "library.h"
-void* Library::server(void *me) {
+#include "lib_map.cpp"
+void* server(void *me) {
 	MPI_Comm client;
 	MPI_Status st;
 	int cond;
