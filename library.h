@@ -54,18 +54,18 @@ pthread_cond_t server_cond, comunicator_cond;
 pthread_mutex_t server_mutexcond, comunicator_mutexcond;
 
 bool GetTask(ITask **currTask) {
-		pthread_mutex_lock(&mutex_get_task);
-		if (currentTasks.empty()) {
-			pthread_mutex_unlock(&mutex_get_task);
-			return false;
-		}
-		else {
-			*currTask = currentTasks.front();
-			currentTasks.pop();
-		}
+	pthread_mutex_lock(&mutex_get_task);
+	if (currentTasks.empty()) {
 		pthread_mutex_unlock(&mutex_get_task);
-		return true;
+		return false;
 	}
+	else {
+		*currTask = currentTasks.front();
+		currentTasks.pop();
+	}
+	pthread_mutex_unlock(&mutex_get_task);
+	return true;
+}
 
 int GetRank(int &sign, int &k, int countOfProcess);
 void SendTask(MPI_Status &st, MPI_Comm &CommWorker, MPI_Comm &CommMap);
