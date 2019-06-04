@@ -38,7 +38,7 @@ void* server(void *me) {
 		MPI_Send(&message, 1, MPI_INT, rank, 2001, currentComm);
 		int k = pthread_cond_wait(&server_cond, &server_mutexcond);
 		// The previous connection must be finished
-		MPI_Recv(&cond, 1, MPI_INT, rank, 1998, serverComm, &st);
+		MPI_Recv(&cond, 1, MPI_INT, rank, 1998, oldComm, &st);
 	}
 	return 0;
 }

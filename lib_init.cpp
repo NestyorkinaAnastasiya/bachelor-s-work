@@ -104,7 +104,7 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 
 		int sizeOfMap;
 		MPI_Recv(&numberOfConnection, 1, MPI_INT, 0, 10002, currentComm, &st);
-		
+		fprintf(stderr, "%d:: numberOfConnection = %d\n", rank, numberOfConnection);
 		MPI_Recv(&sizeOfMap, 1, MPI_INT, 0, 10000, currentComm, &st);
 		fprintf(stderr, "%d:: sizeOfMap = %d\n", rank, sizeOfMap);
 		if (sizeOfMap) {

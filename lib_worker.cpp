@@ -141,7 +141,7 @@ void StartWork() {
 				}
 				// Send message to server about changed communicator
 				changeComm = false;
-				MPI_Isend(&cond, 1, MPI_INT, rank, 1998, currentComm, &req);
+				MPI_Isend(&cond, 1, MPI_INT, rank, 1998, oldComm, &req);
 				connection = false;
 				fprintf(stderr, "%d:: connection is done.\n", rank);
 			}
