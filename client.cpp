@@ -20,9 +20,17 @@ void FindSolution() {
 	std::string nameFile = "Loading" + ss.str();
 	nameFile += ".txt";
 	std::ofstream fLoading(nameFile);
-	if (client) {
-		MPI_Recv(&iteration, 1, MPI_INT, 0, 10005, currentComm, &st);
-		client = false;
+	
+	StartWork();
+
+	MPI_Recv(&iteration, 1, MPI_INT, 0, 10005, currentComm, &st);
+	client = false;
+	GenerateResultOfIteration(reduceComm);
+	while (!queueRecv.empty()) {
+		Task *t = dynamic_cast<Task*>(queueRecv.front());
+		t->SendToNeighbors(currentComm);
+		allTasks.push(t);
+		queueRecv.pop();
 	}
 	for (iteration = 0; iteration < maxiter && CheckConditions(); iteration++) {
 		/* if (rank_old == 0)*/ printf("%d::  --------------------START ITERATION %d---------------------\n", rank, iteration);

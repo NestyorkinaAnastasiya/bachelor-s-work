@@ -44,6 +44,7 @@ void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry) {
 	else retry = false;
 }
 void ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
+	fprintf(stderr, "%d:: worker is changing communicator.\n", rank);
 	int message = 3;
 	MPI_Request req;
 	Comm = newComm;
@@ -51,6 +52,7 @@ void ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
 	for (int i = 0; i < newSize; i++)
 		MPI_Isend(&message, 1, MPI_INT, i, 1999, Comm, &req);
 	newSize = size;
+	fprintf(stderr, "%d:: worker finished changing communicator.\n", rank);
 }
 // Computational thread
 void* worker(void* me) {
@@ -69,10 +71,8 @@ void* worker(void* me) {
 		MPI_Test(&reqChange, &flagChange, &st);
 		MPI_Test(&reqCalc, &flagCalc, &st);
 		if (flagChange != 0) {
-			fprintf(stderr, "%d:: worker is changing communicator.\n", rank);
 			ChangeCommunicator(Comm, newSize);
 			MPI_Irecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
-			fprintf(stderr, "%d:: worker finished changing communicator.\n", rank);
 			flagChange = false;
 		}
 		if (flagCalc != 0){
