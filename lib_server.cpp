@@ -6,6 +6,7 @@ void* server(void *me) {
 	char port_name[MPI_MAX_PORT_NAME];
 	int old_size, new_size;
 	bool blockConnection = false;
+	newComm = currentComm;
 	// Open port
 	if (rank == 0) {
 		MPI_Open_port(MPI_INFO_NULL, port_name);
@@ -15,6 +16,7 @@ void* server(void *me) {
 		fPort.close();
 	}
 	for (; numberOfConnection < countOfConnect; ) {
+		MPI_Comm_dup(newComm, &serverComm);
 		old_size = size;
 		// Waiting for new ranks
 		MPI_Comm_accept(port_name, MPI_INFO_NULL, 0, serverComm, &client);
@@ -35,7 +37,7 @@ void* server(void *me) {
 		MPI_Send(&message, 1, MPI_INT, rank, 2001, currentComm);
 		int k = pthread_cond_wait(&server_cond, &server_mutexcond);
 		// The previous connection must be finished
-		MPI_Recv(&cond, 1, MPI_INT, rank, 1998, newComm, &st);
+		//MPI_Recv(&cond, 1, MPI_INT, rank, 1998, newComm, &st);
 	}
 	return 0;
 }
