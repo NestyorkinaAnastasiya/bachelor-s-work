@@ -7,7 +7,6 @@ struct tm * timeinfo;
 
 char buffer[80];
 std::ofstream fTime;
-double residual = 1;
 double eps = 1e-8;
 
 bool CheckConditions() {

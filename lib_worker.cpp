@@ -105,10 +105,10 @@ void* worker(void* me) {
 void StartWork() {
 	MPI_Status st;
 	MPI_Request req;
-	startWork = true;
 	int cond = 1;
 	for (int i = 0; i < countOfWorkers; i++)
 		MPI_Isend(&cond, 1, MPI_INT, rank, 1999, currentComm, &req);
+	
 	int count = 0, countOfConnectedWorkers = 0;
 	bool connection = false;
 	while (count < countOfWorkers || connection) {
@@ -148,6 +148,5 @@ void StartWork() {
 		t->Clear();
 		sendedTasks.pop();
 	}
-	startWork = false;
 	fprintf(stderr, "%d:: work has done\n", rank);
 }

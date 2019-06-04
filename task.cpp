@@ -4,6 +4,8 @@ int dim;
 double	hx = 0.1,
 hy = 0.1,
 hz = 0.1;
+
+double residual = 1;
 /*hx = 0.25,
 hy = 0.25,
 hz = 0.25;*/

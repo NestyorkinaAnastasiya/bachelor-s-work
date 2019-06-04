@@ -44,8 +44,8 @@ bool server_new = false;
 std::vector<int> map;
 std::queue<ITask*> currentTasks, queueRecv, sendedTasks;
 // Communicators
-MPI_Comm currentComm = oldComm = newComm = 
-	serverComm = reduceComm	= MPI_COMM_WORLD;
+MPI_Comm currentComm = MPI_COMM_WORLD;
+MPI_Comm oldComm, newComm, serverComm, reduceComm;
 
 pthread_mutexattr_t attr_set_task, attr_get_task;
 pthread_mutex_t mutex_get_task, mutex_set_task;

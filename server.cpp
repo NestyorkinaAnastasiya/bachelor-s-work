@@ -6,8 +6,6 @@ time_t rawtime;
 struct tm * timeinfo;
 
 char buffer[80];
-
-double residual = 1;
 double eps = 1e-8;
 
 bool CheckConditions() {
