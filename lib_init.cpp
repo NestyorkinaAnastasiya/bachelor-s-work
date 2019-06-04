@@ -120,7 +120,6 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 			CreateLibraryComponents();
 			fprintf(stderr, "%d:: finish creating library components....\n", rank);
 		}
-		else if (numberOfConnection < countOfConnect-1) MPI_Comm_dup(newComm, &serverComm);
 	}	
 	else {
 		fprintf(stderr, "%d:: create library components....\n", rank);
@@ -137,7 +136,7 @@ void CloseLibraryComponents() {
 	// Close dispatcher
 	MPI_Isend(&exit, 1, MPI_INT, rank, 2001, currentComm, &s);
 	pthread_join(thrs[countOfWorkers], NULL);
-	fprintf(stderr, "%d::dispetcher close\n", rank);
+	fprintf(stderr, "%d:: dispetcher close\n", rank);
 	// Close old dispatcher
 	pthread_join(thrs[countOfWorkers + 3], NULL);
 	while (numberOfConnection < countOfConnect) {
@@ -151,7 +150,7 @@ void CloseLibraryComponents() {
 				MPI_Send(&cond, 1, MPI_INT, k, 10000, newComm);
 		}
 		//cond = 1;
-		//MPI_Isend(&cond, 1, MPI_INT, rank, 1998, currentComm, &s);
+		MPI_Isend(&cond, 1, MPI_INT, rank, 1998, currentComm, &s);
 	}
 	// Close server
 	pthread_join(thrs[countOfWorkers + 2], NULL);

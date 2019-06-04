@@ -99,6 +99,5 @@ void* dispatcher(void* me) {
 		} // Close dispatcher 
 		else if (cond == -1) close = true;
 	}
-	fprintf(stderr, "%d:: dispatcher close.\n", rank);
 	return 0;
 }

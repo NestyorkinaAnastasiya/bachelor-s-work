@@ -16,7 +16,7 @@ void* server(void *me) {
 		fPort.close();
 	}
 	for (; numberOfConnection < countOfConnect; ) {
-		MPI_Comm_dup(newComm, &serverComm);
+		//MPI_Comm_dup(newComm, &serverComm);
 		fprintf(stderr, "%d:: server are ready for connection.\n", rank);
 		old_size = size;
 		// Waiting for new ranks
@@ -38,7 +38,7 @@ void* server(void *me) {
 		MPI_Send(&message, 1, MPI_INT, rank, 2001, currentComm);
 		int k = pthread_cond_wait(&server_cond, &server_mutexcond);
 		// The previous connection must be finished
-		//MPI_Recv(&cond, 1, MPI_INT, rank, 1998, newComm, &st);
+		MPI_Recv(&cond, 1, MPI_INT, rank, 1998, serverComm, &st);
 	}
 	return 0;
 }
