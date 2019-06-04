@@ -126,8 +126,6 @@ void CloseLibraryComponents() {
 	MPI_Isend(&exit, 1, MPI_INT, rank, 2001, currentComm, &s);
 	pthread_join(thrs[countOfWorkers], NULL);
 	fprintf(stderr, "%d::dispetcher close\n", rank);
-	// Flag for old dispatcher work
-	startWork = true;	
 	// Close old dispatcher
 	pthread_join(thrs[countOfWorkers + 3], NULL);
 	while (numberOfConnection < countOfConnect) {
