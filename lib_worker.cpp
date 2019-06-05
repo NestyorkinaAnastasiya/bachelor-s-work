@@ -164,6 +164,7 @@ void StartWork(bool clientProgram) {
 					//MPI_Comm_dup(newComm, &barrierComm);
 					// Send the message about calculation condition
 					if (rank == 0) {
+						fprintf(stderr, "%d:: send condition to client size_old = %d, size = %d.\n", rank, size_old, size);
 						for (int k = size_old; k < size; k++)
 							MPI_Send(&condition, 1, MPI_INT, k, 30000, newComm);
 					}
@@ -203,6 +204,7 @@ void StartWork(bool clientProgram) {
 				//MPI_Comm_dup(newComm, &barrierComm);
 				// Send the message about calculation condition
 				if (rank == 0) {
+					fprintf(stderr, "%d:: send condition to client size_old = %d, size = %d.\n", rank, size_old, size);
 					for (int k = size_old; k < size; k++)
 						MPI_Send(&condition, 1, MPI_INT, k, 30000, newComm);
 				}
