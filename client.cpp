@@ -27,7 +27,7 @@ void FindSolution() {
 	fprintf(stderr, "%d:: iteration = %d.\n", rank, iteration);
 
 	client = false;
-	GenerateResultOfIteration(reduceComm);
+	GenerateResultOfIteration(reduceComm); 
 	while (!queueRecv.empty()) {
 		Task *t = dynamic_cast<Task*>(queueRecv.front());
 		t->SendToNeighbors(reduceComm);

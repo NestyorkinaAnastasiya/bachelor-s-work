@@ -123,8 +123,6 @@ void ChangeMainCommunicator() {
 	// Send message to server about changed communicator
 	changeComm = false;
 	MPI_Isend(&cond, 1, MPI_INT, rank, 1998, oldComm, &req);
-	
-	size_old = size;
 	fprintf(stderr, "%d:: connection is done.\n", rank);
 }
 
@@ -139,8 +137,8 @@ void StartWork(bool clientProgram) {
 	
 	if (!clientProgram || condition) {
 		condition = 0;
-		std::vector<int> flags(size_old);
-		std::vector<int> globalFlags(size_old);
+		std::vector<int> flags(size);
+		std::vector<int> globalFlags(size);
 		for (int i = 0; i < countOfWorkers; i++)
 			MPI_Send(&message, 1, MPI_INT, rank, 1999, currentComm);
 		while (count < countOfWorkers || connection) {
