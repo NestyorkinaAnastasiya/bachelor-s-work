@@ -32,7 +32,7 @@ void* dispatcher_old(void* me) {
 	int cond = 2;
 	/*for (int i = 0; i < countOfWorkers; i++)
 		MPI_Isend(&cond, 1, MPI_INT, rank_old, 1997, currentComm, &req);*/
-	MPI_Isend(&cond, 1, MPI_INT, rank_old, 1999, oldComm_, &req);
+	//MPI_Isend(&cond, 1, MPI_INT, rank_old, 1999, oldComm_, &req);
 	bool close = false;
 	while (!close) {
 		MPI_Status st;
@@ -94,6 +94,12 @@ void* dispatcher(void* me) {
 			if (0 != pthread_create(&thrs[countOfWorkers + 3], &attrs, dispatcher_old, &ids[countOfWorkers + 3])) {
 				perror("Cannot create a thread");
 				abort();
+			}
+			
+			while (true) {
+				MPI_Isend(&cond, 1, MPI_INT, rank_old, 1999, oldComm_, &req);
+				MPI_Recv(&cond, 1, MPI_INT, rank, 2001, Comm, &st);
+				if (cond) break;
 			}
 
 		} // Close dispatcher 
