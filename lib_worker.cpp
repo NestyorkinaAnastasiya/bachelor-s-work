@@ -137,8 +137,9 @@ void StartWork(bool clientProgram) {
 	bool connection = false, lastConnection = false;
 	int condition = 0;
 	if (clientProgram) {
+		fprintf(stderr, "%d:: start first calculations. \n", rank);
 		MPI_Recv(&condition, 1, MPI_INT, 0, 30000, newComm, &st);
-		fprintf(stderr, "%d:: start first calculations. condition = %d.\n", rank, condition);
+		fprintf(stderr, "%d:: condition = %d.\n", rank, condition);
 	}
 	if (!clientProgram || condition) {
 		std::vector<int> flags(size_old);
