@@ -36,6 +36,7 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 	MPI_Comm_rank(currentComm, &rank);
 	if (rank == 0) fprintf(stderr, "%d:: start init.....\n", rank, iteration);
 	MPI_Comm_size(currentComm, &size);
+	size_old = size;
 	pthread_mutexattr_init(&attr_get_task);
 	pthread_mutex_init(&mutex_get_task, &attr_get_task);	
 	pthread_mutexattr_init(&attr_set_task);

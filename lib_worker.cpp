@@ -138,7 +138,8 @@ void StartWork() {
 	int count = 0, countOfConnectedWorkers = 0;
 	bool connection = false, lastConnection = false;
 	int condition = 0;
-	
+	MPI_Comm barrierComm;
+	MPI_Comm_dup(currentComm, &barrierComm);
 	std::vector<int> flags(size_old);
 	std::vector<int> globalFlags(size_old);
 	while (count < countOfWorkers || connection) {
@@ -149,7 +150,7 @@ void StartWork() {
 				MPI_Send(&cond, 1, MPI_INT, rank, 2001, newComm);
 				countOfConnectedWorkers = 0;
 				connection = true;
-				MPI_Barrier(currentComm);
+				MPI_Barrier(barrierComm);
 				condition = 2;
 				flags[rank] = condition;
 				MPI_Allreduce(flags.data(), globalFlags.data(), globalFlags.size(), MPI_INT, MPI_SUM, currentComm);
@@ -178,7 +179,7 @@ void StartWork() {
 		else if (cond == 1) count++;
 	}
 	if (!barrier) {
-		MPI_Barrier(currentComm);
+		MPI_Barrier(barrierComm);
 		condition = 0;
 		// Exchange of condition
 		flags[rank] = condition;
