@@ -110,6 +110,7 @@ void* worker(void* me) {
 
 void ChangeMainCommunicator() {
 	changeExist = true;
+	MPI_Request req;
 	int cond = 4;
 	// Send message to close old dispatcher
 	MPI_Send(&cond, 1, MPI_INT, rank, 2001, currentComm);
@@ -154,7 +155,7 @@ void StartWork() {
 				MPI_Allreduce(flags.data(), globalFlags.data(), globalFlags.size(), MPI_INT, MPI_SUM, currentComm);
 				for (int i = 0; i < globalFlags.size() && !lastConnection; i++)
 					if (globalFlags[i] == 0) barrier = true;
-				flags.resize(size); globalFlags.resize(size());
+				flags.resize(size); globalFlags.resize(size);
 				for (int i = 0; i < countOfWorkers; i++)
 					MPI_Send(&cond, 1, MPI_INT, rank_old, 1997, currentComm);
 				MPI_Comm_dup(newComm, &serverComm);

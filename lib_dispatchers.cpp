@@ -68,6 +68,7 @@ void* dispatcher(void* me) {
 			size_old = size;
 			MPI_Request req;
 			cond = -10;
+			MPI_Comm oldComm_ = currentComm
 			Comm = newComm;
 			MPI_Comm_rank(Comm, &rank);
 			MPI_Comm_size(Comm, &size);			
