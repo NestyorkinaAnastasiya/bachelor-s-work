@@ -209,7 +209,7 @@ void StartWork(bool clientProgram) {
 					MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 1999, currentComm, &st);
 					if (cond == 3) {
 						countOfConnectedWorkers++;
-						fprintf(stderr, "%d:: %d connected workers.\n", rank, countOfConnectedWorkers);
+						fprintf(stderr, "%d:: %d connected workers after calculations.\n", rank, countOfConnectedWorkers);
 						if (countOfConnectedWorkers == size_old * countOfWorkers) {
 							ChangeMainCommunicator();
 							connection = false;
