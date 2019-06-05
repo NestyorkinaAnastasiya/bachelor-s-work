@@ -89,7 +89,7 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 		fPort >> port_name[i];
 		fPort.close();
 		fprintf(stderr, "%d:: port exist\n", rank);
-
+		oldClientRank = rank;
 		MPI_Comm_connect(port_name, MPI_INFO_NULL, 0, currentComm, &server);
 		MPI_Intercomm_merge(server, true, &currentComm);
 

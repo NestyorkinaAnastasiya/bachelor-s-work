@@ -22,7 +22,7 @@ void FindSolution() {
 	std::ofstream fLoading(nameFile);
 	
 	StartWork(true);
-
+	iteration = 0;
 	MPI_Recv(&iteration, 1, MPI_INT, 0, 10005, reduceComm, &st);
 	fprintf(stderr, "%d:: iteration = %d.\n", rank, iteration);
 
@@ -34,8 +34,8 @@ void FindSolution() {
 		allTasks.push(t);
 		queueRecv.pop();
 	}
-	for (iteration = 0; iteration < maxiter && CheckConditions(); iteration++) {
-		/* if (rank_old == 0)*/ printf("%d::  --------------------START ITERATION %d---------------------\n", rank, iteration);
+	for (; iteration < maxiter && CheckConditions(); iteration++) {
+		if (oldClientRank == 0) printf("%d::  --------------------START ITERATION %d---------------------\n", rank, iteration);
 		for (auto &i : newResult) i = 0;
 		for (auto &i : oldResult) i = 0;
 
@@ -67,7 +67,7 @@ void FindSolution() {
 			queueRecv.pop();
 		}
 		fLoading << "iteration " << iteration << "::  " << allTasks.size() << "\ttasks\n";
-		if (rank_old == 0) printf("%d:: --------------------FINISH ITERATION %d---------------------\n", rank, iteration);
+		if (oldClientRank == 0) printf("%d:: --------------------FINISH ITERATION %d---------------------\n", rank, iteration);
 	}
 	CloseLibraryComponents();
 	
