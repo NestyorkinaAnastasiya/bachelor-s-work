@@ -98,10 +98,12 @@ void* dispatcher(void* me) {
 			}
 			
 			while (true) {
+				cond = 2;
 				MPI_Isend(&cond, 1, MPI_INT, rank_old, 1999, oldComm_, &req);
 				MPI_Recv(&cond, 1, MPI_INT, rank, 2001, Comm, &st);
-				if (cond) break;
+				if (cond > 0) break;
 			}
+			fprintf(stderr, "%d:: new dispatcher run.\n", rank);
 
 		} // Close dispatcher 
 		else if (cond == -1) close = true;

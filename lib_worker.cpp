@@ -138,7 +138,6 @@ void StartWork() {
 	int count = 0, countOfConnectedWorkers = 0;
 	bool connection = false, lastConnection = false;
 	int condition = 0;
-	MPI_Comm_dup(currentComm, &barrierComm);
 	std::vector<int> flags(size_old);
 	std::vector<int> globalFlags(size_old);
 	while (count < countOfWorkers || connection) {
@@ -147,6 +146,7 @@ void StartWork() {
 			if (!barrier) {
 				// Send message to dispatcher about connection continue
 				MPI_Send(&cond, 1, MPI_INT, rank, 2001, newComm);
+				fprintf(stderr, "%d:: connection....\n", rank);
 				countOfConnectedWorkers = 0;
 				connection = true;
 				//MPI_Barrier(barrierComm);
