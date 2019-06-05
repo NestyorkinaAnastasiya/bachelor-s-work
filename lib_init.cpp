@@ -113,6 +113,8 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 		/*	for (int i = 0; i < map.size(); i++)
 				printf("%d; ", map[i]);
 			fprintf(stderr, "\n");*/
+			MPI_Recv(&condition, 1, MPI_INT, 0, 30000, newComm, &st);
+			fprintf(stderr, "%d:: condition = %d.\n", rank, condition);
 			MPI_Comm_dup(currentComm, &serverComm);
 			MPI_Comm_dup(currentComm, &reduceComm);			
 			//MPI_Comm_dup(currentComm, &barrierComm);

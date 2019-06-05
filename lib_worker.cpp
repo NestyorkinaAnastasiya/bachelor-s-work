@@ -135,13 +135,10 @@ void StartWork(bool clientProgram) {
 	int cond = 1, message = 1;
 	int count = 0, countOfConnectedWorkers = 0;
 	bool connection = false, lastConnection = false;
-	int condition = 0;
-	if (clientProgram) {
-		fprintf(stderr, "%d:: start first calculations. \n", rank);
-		MPI_Recv(&condition, 1, MPI_INT, 0, 30000, newComm, &st);
-		fprintf(stderr, "%d:: condition = %d.\n", rank, condition);
-	}
+	fprintf(stderr, "%d:: start first calculations. \n", rank);
+	
 	if (!clientProgram || condition) {
+		condition = 0;
 		std::vector<int> flags(size_old);
 		std::vector<int> globalFlags(size_old);
 		for (int i = 0; i < countOfWorkers; i++)
@@ -159,15 +156,15 @@ void StartWork(bool clientProgram) {
 					MPI_Allreduce(flags.data(), globalFlags.data(), globalFlags.size(), MPI_INT, MPI_SUM, currentComm);
 					for (int i = 0; i < globalFlags.size() && !lastConnection; i++)
 						if (globalFlags[i] == 0) { barrier = true; condition = 0; }
-					MPI_Comm_dup(newComm, &serverComm);
-					MPI_Comm_dup(newComm, &reduceComm);
-					//MPI_Comm_dup(newComm, &barrierComm);
 					// Send the message about calculation condition
 					if (rank == 0) {
 						fprintf(stderr, "%d:: send condition to client size_old = %d, size = %d.\n", rank, size_old, size);
 						for (int k = size_old; k < size; k++)
 							MPI_Send(&condition, 1, MPI_INT, k, 30000, newComm);
 					}
+					MPI_Comm_dup(newComm, &serverComm);
+					MPI_Comm_dup(newComm, &reduceComm);
+					//MPI_Comm_dup(newComm, &barrierComm);
 					flags.resize(size); globalFlags.resize(size);
 					for (int i = 0; i < countOfWorkers; i++)
 						MPI_Send(&cond, 1, MPI_INT, rank_old, 1997, currentComm);
@@ -199,15 +196,15 @@ void StartWork(bool clientProgram) {
 			if (barrier) {
 				// Send message to dispatcher about connection continue
 				MPI_Send(&cond, 1, MPI_INT, rank, 2001, newComm);
-				MPI_Comm_dup(newComm, &serverComm);
-				MPI_Comm_dup(newComm, &reduceComm);
-				//MPI_Comm_dup(newComm, &barrierComm);
 				// Send the message about calculation condition
 				if (rank == 0) {
 					fprintf(stderr, "%d:: send condition to client size_old = %d, size = %d.\n", rank, size_old, size);
 					for (int k = size_old; k < size; k++)
 						MPI_Send(&condition, 1, MPI_INT, k, 30000, newComm);
 				}
+				MPI_Comm_dup(newComm, &serverComm);
+				MPI_Comm_dup(newComm, &reduceComm);
+				//MPI_Comm_dup(newComm, &barrierComm);
 				for (int i = 0; i < countOfWorkers; i++)
 					MPI_Send(&cond, 1, MPI_INT, rank_old, 1997, currentComm);
 				connection = true;

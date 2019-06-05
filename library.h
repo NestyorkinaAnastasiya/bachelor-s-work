@@ -38,6 +38,7 @@ int countOfConnect = 2;
 int countOfWorkers = 1;
 // Count of all threads
 int countOfThreads = 3;
+int condition = 0;
 int changeComm = false;
 bool changeExist = false;
 bool server_new = false;
