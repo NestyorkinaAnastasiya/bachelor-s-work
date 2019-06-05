@@ -49,7 +49,7 @@ void ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
 	MPI_Request req;
 	// The message about finished changing of communicator
 	for (int i = 0; i < newSize; i++)
-		MPI_Isend(&message, 1, MPI_INT, i, 1999, Comm, &req);
+		MPI_Send(&message, 1, MPI_INT, i, 1999, Comm);
 	Comm = newComm;
 	newSize = size;
 	fprintf(stderr, "%d:: worker finished changing communicator.\n", rank);
