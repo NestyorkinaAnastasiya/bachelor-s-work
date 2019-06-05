@@ -47,10 +47,10 @@ void ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
 	fprintf(stderr, "%d:: worker is changing communicator.\n", rank);
 	int message = 3;
 	MPI_Request req;
-	Comm = newComm;
 	// The message about finished changing of communicator
 	for (int i = 0; i < newSize; i++)
 		MPI_Isend(&message, 1, MPI_INT, i, 1999, Comm, &req);
+	Comm = newComm;
 	newSize = size;
 	fprintf(stderr, "%d:: worker finished changing communicator.\n", rank);
 }
@@ -122,11 +122,6 @@ void ChangeMainCommunicator() {
 	}*/
 	// Send message to server about changed communicator
 	changeComm = false;
-
-	MPI_Comm_dup(newComm, &serverComm);
-	MPI_Comm_dup(newComm, &reduceComm);
-
-	//MPI_Comm_dup(newComm, &barrierComm);
 	MPI_Isend(&cond, 1, MPI_INT, rank, 1998, oldComm, &req);
 	
 	size_old = size;
@@ -160,6 +155,9 @@ void StartWork(bool clientProgram) {
 					MPI_Allreduce(flags.data(), globalFlags.data(), globalFlags.size(), MPI_INT, MPI_SUM, currentComm);
 					for (int i = 0; i < globalFlags.size() && !lastConnection; i++)
 						if (globalFlags[i] == 0) { barrier = true; condition = 0; }
+					MPI_Comm_dup(newComm, &serverComm);
+					MPI_Comm_dup(newComm, &reduceComm);
+					//MPI_Comm_dup(newComm, &barrierComm);
 					// Send the message about calculation condition
 					if (rank == 0) {
 						for (int k = size_old; k < size; k++)
@@ -193,14 +191,17 @@ void StartWork(bool clientProgram) {
 			MPI_Allreduce(flags.data(), globalFlags.data(), globalFlags.size(), MPI_INT, MPI_SUM, currentComm);
 			for (int i = 0; i < globalFlags.size() && !barrier; i++)
 				if (globalFlags[i] == 2) barrier = true;
-			// Send the message about calculation condition
-			if (rank == 0) {
-				for (int k = size_old; k < size; k++)
-					MPI_Send(&condition, 1, MPI_INT, k, 30000, newComm);
-			}
 			if (barrier) {
 				// Send message to dispatcher about connection continue
 				MPI_Send(&cond, 1, MPI_INT, rank, 2001, newComm);
+				MPI_Comm_dup(newComm, &serverComm);
+				MPI_Comm_dup(newComm, &reduceComm);
+				//MPI_Comm_dup(newComm, &barrierComm);
+				// Send the message about calculation condition
+				if (rank == 0) {
+					for (int k = size_old; k < size; k++)
+						MPI_Send(&condition, 1, MPI_INT, k, 30000, newComm);
+				}
 				for (int i = 0; i < countOfWorkers; i++)
 					MPI_Send(&cond, 1, MPI_INT, rank_old, 1997, currentComm);
 				connection = true;
