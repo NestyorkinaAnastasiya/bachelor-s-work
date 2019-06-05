@@ -48,9 +48,11 @@ void FindSolution() {
 
 		if (changeExist) {
 			changeExist = false;
-			if (rank == 0)
+			if (rank == 0) {
+				fprintf(stderr, "%d:: send iteration.\n", rank);
 				for (int k = size_old; k < size; k++)
 					MPI_Send(&iteration, 1, MPI_INT, k, 10005, reduceComm);
+			}
 		}
 		fprintf(stderr, "%d:: get to generate result of iteration\n", rank);
 		GenerateResultOfIteration(reduceComm);

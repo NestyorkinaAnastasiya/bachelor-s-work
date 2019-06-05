@@ -24,6 +24,8 @@ void FindSolution() {
 	StartWork(true);
 
 	MPI_Recv(&iteration, 1, MPI_INT, 0, 10005, reduceComm, &st);
+	fprintf(stderr, "%d:: iteration = %d.\n", rank, iteration);
+
 	client = false;
 	GenerateResultOfIteration(reduceComm);
 	while (!queueRecv.empty()) {
