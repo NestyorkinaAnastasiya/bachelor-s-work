@@ -136,7 +136,10 @@ void StartWork(bool clientProgram) {
 	int count = 0, countOfConnectedWorkers = 0;
 	bool connection = false, lastConnection = false;
 	int condition = 0;
-	if (clientProgram) MPI_Recv(&condition, 1, MPI_INT, 0, 30000, newComm, &st);
+	if (clientProgram) {
+		MPI_Recv(&condition, 1, MPI_INT, 0, 30000, newComm, &st);
+		fprintf(stderr, "%d:: start first calculations. condition = %d.\n", rank, condition);
+	}
 	if (!clientProgram || condition) {
 		std::vector<int> flags(size_old);
 		std::vector<int> globalFlags(size_old);
