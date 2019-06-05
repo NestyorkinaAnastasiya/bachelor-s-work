@@ -95,9 +95,10 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 
 		fprintf(stderr, "%d:: connect to server success\n", rank);
 
-		rank_old = rank;
 		MPI_Comm_rank(currentComm, &rank);
 		MPI_Comm_size(currentComm, &size);
+		rank_old = rank;
+		size_old = size;
 
 		fprintf(stderr, "%d:: new rank = %d, new_size = %d\n", rank_old, rank, size);
 
