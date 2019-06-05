@@ -25,7 +25,7 @@ void SendTask(MPI_Status &st, MPI_Comm &CommWorker, MPI_Comm &CommMap){
 
 // Dispatcher for work in old communicator (only tasks sending) 
 void* dispatcher_old(void* me) {
-	fprintf(stderr, "%d::dispetcher_old run\n", rank);	
+	fprintf(stderr, "%d:: dispetcher_old run\n", rank);	
 	MPI_Request req;
 	MPI_Comm oldComm_ = currentComm, newComm_ = newComm;
 	ITask *t;

@@ -147,7 +147,7 @@ void StartWork() {
 				// Send message to dispatcher about connection continue
 				MPI_Send(&cond, 1, MPI_INT, rank, 2001, newComm);
 				fprintf(stderr, "%d:: connection....\n", rank);
-				countOfConnectedWorkers = 0;
+				
 				connection = true;
 				//MPI_Barrier(barrierComm);
 				condition = 2;
@@ -174,6 +174,7 @@ void StartWork() {
 			if (countOfConnectedWorkers == size_old * countOfWorkers) {
 				ChangeMainCommunicator();
 				connection = false;
+				countOfConnectedWorkers = 0;
 			}
 		}
 		else if (cond == 1) count++;
@@ -196,7 +197,6 @@ void StartWork() {
 			MPI_Comm_dup(newComm, &reduceComm);			
 			//MPI_Comm_dup(newComm, &barrierComm);
 			connection = true;
-			countOfConnectedWorkers = 0;
 			while (connection) {
 				MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 1999, currentComm, &st);
 				if (count == 3) {
@@ -204,7 +204,8 @@ void StartWork() {
 					fprintf(stderr, "%d:: %d connected workers.\n", rank, countOfConnectedWorkers);
 					if (countOfConnectedWorkers == size_old * countOfWorkers) {
 						ChangeMainCommunicator();
-						connection = false;
+						connection = false;						
+						countOfConnectedWorkers = 0;
 					}
 				}
 			}
