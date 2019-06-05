@@ -1,5 +1,6 @@
 #include "lib_map.cpp"
 void* server(void *me) {
+	fprintf(stderr, "%d:: server run.\n", rank);
 	MPI_Comm client;
 	MPI_Status st;
 	int cond;

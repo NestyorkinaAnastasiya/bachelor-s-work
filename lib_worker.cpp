@@ -173,7 +173,7 @@ void StartWork(bool clientProgram) {
 					MPI_Send(&cond, 1, MPI_INT, rank, 2001, newComm);
 				}
 			}
-			else if (count == 3) {
+			else if (cond == 3) {
 				countOfConnectedWorkers++;
 				fprintf(stderr, "%d:: %d connected workers.\n", rank, countOfConnectedWorkers);
 				if (countOfConnectedWorkers == size_old * countOfWorkers) {
@@ -207,7 +207,7 @@ void StartWork(bool clientProgram) {
 				connection = true;
 				while (connection) {
 					MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 1999, currentComm, &st);
-					if (count == 3) {
+					if (cond == 3) {
 						countOfConnectedWorkers++;
 						fprintf(stderr, "%d:: %d connected workers.\n", rank, countOfConnectedWorkers);
 						if (countOfConnectedWorkers == size_old * countOfWorkers) {

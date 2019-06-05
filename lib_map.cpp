@@ -1,5 +1,6 @@
 #include "lib_dispatchers.cpp"
 void* mapController(void* me) {
+	fprintf(stderr, "%d:: map controller run.\n", rank);
 	MPI_Comm Comm = currentComm;
 	MPI_Status st;
 	bool close = false;
