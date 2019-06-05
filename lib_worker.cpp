@@ -122,100 +122,108 @@ void ChangeMainCommunicator() {
 	}*/
 	// Send message to server about changed communicator
 	changeComm = false;
+
+	MPI_Comm_dup(newComm, &serverComm);
+	MPI_Comm_dup(newComm, &reduceComm);
+
+	//MPI_Comm_dup(newComm, &barrierComm);
 	MPI_Isend(&cond, 1, MPI_INT, rank, 1998, oldComm, &req);
 	
 	size_old = size;
 	fprintf(stderr, "%d:: connection is done.\n", rank);
 }
 
-void StartWork() {
+void StartWork(bool clientProgram) {
 	MPI_Status st;
 	MPI_Request req;
 	bool barrier = false;
 	int cond = 1, message = 1;
-	for (int i = 0; i < countOfWorkers; i++)
-		MPI_Send(&message, 1, MPI_INT, rank, 1999, currentComm);
 	int count = 0, countOfConnectedWorkers = 0;
 	bool connection = false, lastConnection = false;
 	int condition = 0;
-	std::vector<int> flags(size_old);
-	std::vector<int> globalFlags(size_old);
-	while (count < countOfWorkers || connection) {
-		MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 1999, currentComm, &st);
-		if (cond == 2) {
-			if (!barrier) {
+	if (clientProgram) MPI_Recv(&condition, 1, MPI_INT, k, 30000, newComm);
+	if (!clientProgram || condition) {
+		std::vector<int> flags(size_old);
+		std::vector<int> globalFlags(size_old);
+		for (int i = 0; i < countOfWorkers; i++)
+			MPI_Send(&message, 1, MPI_INT, rank, 1999, currentComm);
+		while (count < countOfWorkers || connection) {
+			MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 1999, currentComm, &st);
+			if (cond == 2) {
+				if (!barrier) {
+					// Send message to dispatcher about connection continue
+					MPI_Send(&cond, 1, MPI_INT, rank, 2001, newComm);
+					fprintf(stderr, "%d:: connection....\n", rank);
+					connection = true;
+					condition = 2;
+					flags[rank] = condition;
+					MPI_Allreduce(flags.data(), globalFlags.data(), globalFlags.size(), MPI_INT, MPI_SUM, currentComm);
+					for (int i = 0; i < globalFlags.size() && !lastConnection; i++)
+						if (globalFlags[i] == 0) { barrier = true; condition = 0; }
+					// Send the message about calculation condition
+					if (rank == 0) {
+						for (int k = size_old; k < size; k++)
+							MPI_Send(&condition, 1, MPI_INT, k, 30000, newComm);
+					}
+					flags.resize(size); globalFlags.resize(size);
+					for (int i = 0; i < countOfWorkers; i++)
+						MPI_Send(&cond, 1, MPI_INT, rank_old, 1997, currentComm);
+				}
+				else {
+					cond = 0;
+					// Send message to dispatcher about connection continue fail
+					MPI_Send(&cond, 1, MPI_INT, rank, 2001, newComm);
+				}
+			}
+			else if (count == 3) {
+				countOfConnectedWorkers++;
+				fprintf(stderr, "%d:: %d connected workers.\n", rank, countOfConnectedWorkers);
+				if (countOfConnectedWorkers == size_old * countOfWorkers) {
+					ChangeMainCommunicator();
+					connection = false;
+					countOfConnectedWorkers = 0;
+				}
+			}
+			else if (cond == 1) count++;
+		}
+		if (!barrier) {
+			condition = 0;
+			// Exchange of condition
+			flags[rank] = condition;
+			MPI_Allreduce(flags.data(), globalFlags.data(), globalFlags.size(), MPI_INT, MPI_SUM, currentComm);
+			for (int i = 0; i < globalFlags.size() && !barrier; i++)
+				if (globalFlags[i] == 2) barrier = true;
+			// Send the message about calculation condition
+			if (rank == 0) {
+				for (int k = size_old; k < size; k++)
+					MPI_Send(&condition, 1, MPI_INT, k, 30000, newComm);
+			}
+			if (barrier) {
 				// Send message to dispatcher about connection continue
 				MPI_Send(&cond, 1, MPI_INT, rank, 2001, newComm);
-				fprintf(stderr, "%d:: connection....\n", rank);
-				
-				connection = true;
-				//MPI_Barrier(barrierComm);
-				condition = 2;
-				flags[rank] = condition;
-				MPI_Allreduce(flags.data(), globalFlags.data(), globalFlags.size(), MPI_INT, MPI_SUM, currentComm);
-				for (int i = 0; i < globalFlags.size() && !lastConnection; i++)
-					if (globalFlags[i] == 0) barrier = true;
-				flags.resize(size); globalFlags.resize(size);
 				for (int i = 0; i < countOfWorkers; i++)
 					MPI_Send(&cond, 1, MPI_INT, rank_old, 1997, currentComm);
-				MPI_Comm_dup(newComm, &serverComm);
-				MPI_Comm_dup(newComm, &reduceComm);
-				//MPI_Comm_dup(newComm, &barrierComm);
-			}
-			else {
-				cond = 0;
-				// Send message to dispatcher about connection continue fail
-				MPI_Send(&cond, 1, MPI_INT, rank, 2001, newComm);
-			}
-		}
-		else if (count == 3) {
-			countOfConnectedWorkers++;
-			fprintf(stderr, "%d:: %d connected workers.\n", rank, countOfConnectedWorkers);
-			if (countOfConnectedWorkers == size_old * countOfWorkers) {
-				ChangeMainCommunicator();
-				connection = false;
-				countOfConnectedWorkers = 0;
-			}
-		}
-		else if (cond == 1) count++;
-	}
-	if (!barrier) {
-		//MPI_Barrier(barrierComm);
-		condition = 0;
-		// Exchange of condition
-		flags[rank] = condition;
-		MPI_Allreduce(flags.data(), globalFlags.data(), globalFlags.size(), MPI_INT, MPI_SUM, currentComm);
-		for (int i = 0; i < globalFlags.size() && !barrier; i++)
-			if (globalFlags[i] == 2) barrier = true;
-		if (barrier) {
-			// Send message to dispatcher about connection continue
-			MPI_Send(&cond, 1, MPI_INT, rank, 2001, newComm);
-			for (int i = 0; i < countOfWorkers; i++)
-				MPI_Send(&cond, 1, MPI_INT, rank_old, 1997, currentComm);
-
-			MPI_Comm_dup(newComm, &serverComm);
-			MPI_Comm_dup(newComm, &reduceComm);			
-			//MPI_Comm_dup(newComm, &barrierComm);
-			connection = true;
-			while (connection) {
-				MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 1999, currentComm, &st);
-				if (count == 3) {
-					countOfConnectedWorkers++;
-					fprintf(stderr, "%d:: %d connected workers.\n", rank, countOfConnectedWorkers);
-					if (countOfConnectedWorkers == size_old * countOfWorkers) {
-						ChangeMainCommunicator();
-						connection = false;						
-						countOfConnectedWorkers = 0;
+				connection = true;
+				while (connection) {
+					MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 1999, currentComm, &st);
+					if (count == 3) {
+						countOfConnectedWorkers++;
+						fprintf(stderr, "%d:: %d connected workers.\n", rank, countOfConnectedWorkers);
+						if (countOfConnectedWorkers == size_old * countOfWorkers) {
+							ChangeMainCommunicator();
+							connection = false;
+							countOfConnectedWorkers = 0;
+						}
 					}
 				}
 			}
 		}
+		// Clear the memory
+		while (!sendedTasks.empty()) {
+			ITask *t = sendedTasks.front();
+			t->Clear();
+			sendedTasks.pop();
+		}
+		fprintf(stderr, "%d:: calculations are done\n", rank);
 	}
-	// Clear the memory
-	while (!sendedTasks.empty()) {
-		ITask *t = sendedTasks.front();
-		t->Clear();
-		sendedTasks.pop();
-	}
-	fprintf(stderr, "%d:: calculations are done\n", rank);
 }

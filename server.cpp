@@ -44,7 +44,7 @@ void FindSolution() {
 
 		fprintf(stderr, "%d:: count of tasks = %d\n", rank, currentTasks.size());
 		
-		StartWork();
+		StartWork(false);
 
 		if (changeExist) {
 			changeExist = false;

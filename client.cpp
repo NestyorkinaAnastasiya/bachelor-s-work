@@ -21,7 +21,7 @@ void FindSolution() {
 	nameFile += ".txt";
 	std::ofstream fLoading(nameFile);
 	
-	StartWork();
+	StartWork(true);
 
 	MPI_Recv(&iteration, 1, MPI_INT, 0, 10005, reduceComm, &st);
 	client = false;
@@ -54,7 +54,7 @@ void FindSolution() {
 		}
 		fprintf(stderr, "%d:: count of tasks = %d\n", rank, currentTasks.size());
 
-		StartWork();
+		StartWork(false);
 				
 		GenerateResultOfIteration(reduceComm);
 

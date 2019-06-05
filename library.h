@@ -74,7 +74,7 @@ void ExecuteOtherTask(MPI_Comm &Comm, int id, bool &retry);
 void ChangeCommunicator(MPI_Comm &Comm, int &newSize);
 void LibraryInitialize(int argc, char **argv, bool clientProgram);
 void CreateLibraryComponents();
-void StartWork();
+void StartWork(bool clientProgram);
 void CloseLibraryComponents();
 void* dispatcher_old(void* me);
 void* dispatcher(void* me);
