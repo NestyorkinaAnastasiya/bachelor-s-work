@@ -22,10 +22,9 @@ void FindSolution() {
 	std::ofstream fLoading(nameFile);
 	
 	StartWork(true);
-	iteration = 0;
 	MPI_Recv(&iteration, 1, MPI_INT, 0, 10005, reduceComm, &st);
 	fprintf(stderr, "%d:: iteration = %d.\n", rank, iteration);
-
+	iteration++;
 	client = false;
 	GenerateResultOfIteration(reduceComm); 
 	while (!queueRecv.empty()) {

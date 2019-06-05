@@ -60,6 +60,7 @@ void* dispatcher(void* me) {
 		if (cond == 0) SendTask(st, Comm, Comm);
 		// Communicator is changing
 		else if (cond == 1) {
+			cond = -10;
 			// Message to mapController about communicator changing
 			MPI_Send(&cond, 1, MPI_INT, rank, 1030, Comm);
 			// Communicators should be changed in single time because of map control
@@ -67,7 +68,6 @@ void* dispatcher(void* me) {
 			rank_old = rank;
 			size_old = size;
 			MPI_Request req;
-			cond = -10;
 			MPI_Comm oldComm_ = currentComm;
 			Comm = newComm;
 			MPI_Comm_rank(Comm, &rank);
