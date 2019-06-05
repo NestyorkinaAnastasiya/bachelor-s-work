@@ -46,7 +46,7 @@ std::queue<ITask*> currentTasks, queueRecv, sendedTasks;
 // Communicators
 MPI_Comm currentComm = MPI_COMM_WORLD;
 MPI_Comm oldComm, newComm, serverComm, reduceComm;
-
+MPI_Comm barrierComm;
 pthread_mutexattr_t attr_set_task, attr_get_task;
 pthread_mutex_t mutex_get_task, mutex_set_task;
 pthread_attr_t attrs_dispatcher, attrs_server, attrs_mapController, attrs_workers;
