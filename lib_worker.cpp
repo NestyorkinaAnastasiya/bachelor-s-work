@@ -160,7 +160,7 @@ void StartWork() {
 					MPI_Send(&cond, 1, MPI_INT, rank_old, 1997, currentComm);
 				MPI_Comm_dup(newComm, &serverComm);
 				MPI_Comm_dup(newComm, &reduceComm);
-				MPI_Comm_dup(newComm, &barrierComm);
+				//MPI_Comm_dup(newComm, &barrierComm);
 			}
 			else {
 				cond = 0;
@@ -194,7 +194,7 @@ void StartWork() {
 
 			MPI_Comm_dup(newComm, &serverComm);
 			MPI_Comm_dup(newComm, &reduceComm);			
-			MPI_Comm_dup(newComm, &barrierComm);
+			//MPI_Comm_dup(newComm, &barrierComm);
 			connection = true;
 			countOfConnectedWorkers = 0;
 			while (connection) {
