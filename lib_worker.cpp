@@ -48,6 +48,8 @@ void ChangeCommunicator(MPI_Comm &Comm, int &newSize) {
 	int message = 3;
 	MPI_Request req;
 	// The message about finished changing of communicator
+
+	fprintf(stderr, "%d:: worker send message to %d ranks.\n", rank, newSize);
 	for (int i = 0; i < newSize; i++)
 		MPI_Send(&message, 1, MPI_INT, i, 1999, Comm);
 	Comm = newComm;
@@ -142,7 +144,9 @@ void StartWork(bool clientProgram) {
 		for (int i = 0; i < countOfWorkers; i++)
 			MPI_Send(&message, 1, MPI_INT, rank, 1999, currentComm);
 		while (count < countOfWorkers || connection) {
+			fprintf(stderr, "%d:: waiting for message...\n", rank);
 			MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 1999, currentComm, &st);
+			fprintf(stderr, "%d:: get condition %d.\n", rank, cond);
 			if (cond == 2) {
 				if (!barrier) {
 					// Send message to dispatcher about connection continue
