@@ -67,7 +67,7 @@ void* worker(void* me) {
 	int cond, message;
 	// Get message from own rank
 	MPI_Irecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);	
-	MPI_Irecv(&cond, 1, MPI_INT, rank, 1999, Comm, &reqCalc);
+	MPI_Irecv(&cond, 1, MPI_INT, rank, 1996, Comm, &reqCalc);
 	int countOfProcess, newSize = size;	
 	while (!close) {
 		MPI_Test(&reqChange, &flagChange, &st);
@@ -101,7 +101,7 @@ void* worker(void* me) {
 				}
 				MPI_Send(&cond, 1, MPI_INT, rank, 1999, Comm);
 				fprintf(stderr, "%d:: worker finished job.\n", rank);
-				MPI_Irecv(&cond, 1, MPI_INT, rank, 1999, Comm, &reqCalc);
+				MPI_Irecv(&cond, 1, MPI_INT, rank, 1996, Comm, &reqCalc);
 				flagCalc = 0;
 			}
 			else if (cond == -1) close = true;
@@ -142,7 +142,7 @@ void StartWork(bool clientProgram) {
 		std::vector<int> flags(size);
 		std::vector<int> globalFlags(size);
 		for (int i = 0; i < countOfWorkers; i++)
-			MPI_Send(&message, 1, MPI_INT, rank, 1999, currentComm);
+			MPI_Send(&message, 1, MPI_INT, rank, 1996, currentComm);
 		while (count < countOfWorkers || connection) {
 			fprintf(stderr, "%d:: waiting for message...\n", rank);
 			MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 1999, currentComm, &st);
@@ -179,7 +179,7 @@ void StartWork(bool clientProgram) {
 			}
 			else if (cond == 3) {
 				countOfConnectedWorkers++;
-				fprintf(stderr, "%d:: %d connected workers.\n", rank, countOfConnectedWorkers);
+				fprintf(stderr, "%d:: %d connected workers. sizeOld = %d\n", rank, countOfConnectedWorkers, size_old);
 				if (countOfConnectedWorkers == size_old * countOfWorkers) {
 					ChangeMainCommunicator();
 					connection = false;
@@ -214,7 +214,7 @@ void StartWork(bool clientProgram) {
 					MPI_Recv(&cond, 1, MPI_INT, MPI_ANY_SOURCE, 1999, currentComm, &st);
 					if (cond == 3) {
 						countOfConnectedWorkers++;
-						fprintf(stderr, "%d:: %d connected workers after calculations.\n", rank, countOfConnectedWorkers);
+						fprintf(stderr, "%d:: %d connected workers after calculations. sizeOld = %d\n", rank, countOfConnectedWorkers, size_old);
 						if (countOfConnectedWorkers == size_old * countOfWorkers) {
 							ChangeMainCommunicator();
 							connection = false;
