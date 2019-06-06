@@ -75,6 +75,7 @@ void* worker(void* me) {
 		if (flagChange != 0) {
 			ChangeCommunicator(Comm, newSize);
 			MPI_Irecv(&message, 1, MPI_INT, rank, 1997, Comm, &reqChange);
+			MPI_Irecv(&cond, 1, MPI_INT, rank, 1996, Comm, &reqCalc);
 			flagChange = false;
 		}
 		if (flagCalc != 0){
