@@ -132,7 +132,7 @@ void CloseLibraryComponents() {
 	//pthread_join(thrs[countOfWorkers + 3], NULL);
 	// Close workers
 	for (int i = 0; i < countOfWorkers; i++)
-		MPI_Isend(&exit, 1, MPI_INT, rank, 1999, currentComm, &s);
+		MPI_Isend(&exit, 1, MPI_INT, rank, 1996, currentComm, &s);
 	/*for (int i = 0; i < countOfWorkers; i++)
 		pthread_join(thrs[i], NULL);*/
 	// Close map controller
