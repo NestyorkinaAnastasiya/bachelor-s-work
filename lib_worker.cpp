@@ -224,13 +224,13 @@ void StartWork(bool clientProgram) {
 				}
 			}
 		}
-		MPI_Barrier(barrierComm);
-		// Clear the memory
-		while (!sendedTasks.empty()) {
-			ITask *t = sendedTasks.front();
-			t->Clear();
-			sendedTasks.pop();
-		}
 		fprintf(stderr, "%d:: calculations are done\n", rank);
+	}
+	MPI_Barrier(barrierComm);
+	// Clear the memory
+	while (!sendedTasks.empty()) {
+		ITask *t = sendedTasks.front();
+		t->Clear();
+		sendedTasks.pop();
 	}
 }
