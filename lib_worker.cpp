@@ -206,7 +206,7 @@ void StartWork(bool clientProgram) {
 				}
 				MPI_Comm_dup(newComm, &serverComm);
 				MPI_Comm_dup(newComm, &reduceComm);
-				//MPI_Comm_dup(newComm, &barrierComm);
+				MPI_Comm_dup(newComm, &barrierComm);
 				for (int i = 0; i < countOfWorkers; i++)
 					MPI_Send(&cond, 1, MPI_INT, rank_old, 1997, currentComm);
 				connection = true;
@@ -224,12 +224,13 @@ void StartWork(bool clientProgram) {
 				}
 			}
 		}
+		MPI_Barrier(barrierComm);
 		// Clear the memory
-		/*while (!sendedTasks.empty()) {
+		while (!sendedTasks.empty()) {
 			ITask *t = sendedTasks.front();
 			t->Clear();
 			sendedTasks.pop();
-		}*/
+		}
 		fprintf(stderr, "%d:: calculations are done\n", rank);
 	}
 }

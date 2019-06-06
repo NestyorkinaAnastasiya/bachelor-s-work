@@ -117,7 +117,7 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 			fprintf(stderr, "%d:: condition = %d.\n", rank, condition);
 			MPI_Comm_dup(currentComm, &serverComm);
 			MPI_Comm_dup(currentComm, &reduceComm);			
-			//MPI_Comm_dup(currentComm, &barrierComm);
+			MPI_Comm_dup(currentComm, &barrierComm);
 			// All server's ranks change their comunicators
 			//MPI_Recv(&sizeOfMap, 1, MPI_INT, 0, 10003, currentComm, &st);
 			fprintf(stderr, "%d:: create library components....\n", rank);
@@ -129,6 +129,7 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 		fprintf(stderr, "%d:: create library components....\n", rank);
 		MPI_Comm_dup(currentComm, &serverComm);
 		MPI_Comm_dup(currentComm, &reduceComm);
+		MPI_Comm_dup(currentComm, &barrierComm);
 		CreateLibraryComponents();
 		fprintf(stderr, "%d:: finish creating library components....\n", rank);
 	}
