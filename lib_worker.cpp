@@ -135,7 +135,6 @@ void StartWork(bool clientProgram) {
 	int cond = 1, message = 1;
 	int count = 0, countOfConnectedWorkers = 0;
 	bool connection = false, lastConnection = false;
-	fprintf(stderr, "%d:: start first calculations. \n", rank);
 	
 	if (!clientProgram || condition) {
 		condition = 0;
@@ -225,11 +224,11 @@ void StartWork(bool clientProgram) {
 			}
 		}
 		// Clear the memory
-		while (!sendedTasks.empty()) {
+		/*while (!sendedTasks.empty()) {
 			ITask *t = sendedTasks.front();
 			t->Clear();
 			sendedTasks.pop();
-		}
+		}*/
 		fprintf(stderr, "%d:: calculations are done\n", rank);
 	}
 }
