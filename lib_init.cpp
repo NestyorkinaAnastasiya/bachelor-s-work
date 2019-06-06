@@ -32,7 +32,6 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 		exit(0);
 	}
 	MPI_Comm_rank(currentComm, &rank);
-	if (rank == 0) fprintf(stderr, "%d:: start init.....\n", rank, iteration);
 	MPI_Comm_size(currentComm, &size);
 	size_old = size;
 	pthread_mutexattr_init(&attr_get_task);
@@ -77,7 +76,6 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 		perror("Error in setting attributes");
 		abort();
 	}
-	if (rank == 0) fprintf(stderr, "%d:: finish init.....\n", rank);
 	if (clientProgram) {
 		MPI_Comm server;
 		MPI_Status st;
@@ -88,7 +86,6 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 		for (int i = 0; i < MPI_MAX_PORT_NAME; i++)
 		fPort >> port_name[i];
 		fPort.close();
-		fprintf(stderr, "%d:: port exist\n", rank);
 		oldClientRank = rank;
 		MPI_Comm_connect(port_name, MPI_INFO_NULL, 0, currentComm, &server);
 		MPI_Intercomm_merge(server, true, &currentComm);
@@ -106,32 +103,21 @@ void LibraryInitialize(int argc, char **argv, bool clientProgram) {
 		MPI_Recv(&numberOfConnection, 1, MPI_INT, 0, 10002, currentComm, &st);
 		fprintf(stderr, "%d:: numberOfConnection = %d\n", rank, numberOfConnection);
 		MPI_Recv(&sizeOfMap, 1, MPI_INT, 0, 10000, currentComm, &st);
-		fprintf(stderr, "%d:: sizeOfMap = %d\n", rank, sizeOfMap);
 		if (sizeOfMap) {
 			map.resize(sizeOfMap);
 			MPI_Recv(map.data(), sizeOfMap, MPI_INT, 0, 10001, currentComm, &st);
-		/*	for (int i = 0; i < map.size(); i++)
-				printf("%d; ", map[i]);
-			fprintf(stderr, "\n");*/
 			MPI_Recv(&condition, 1, MPI_INT, 0, 30000, currentComm, &st);
-			fprintf(stderr, "%d:: condition = %d.\n", rank, condition);
 			MPI_Comm_dup(currentComm, &serverComm);
 			MPI_Comm_dup(currentComm, &reduceComm);			
 			MPI_Comm_dup(currentComm, &barrierComm);
-			// All server's ranks change their comunicators
-			//MPI_Recv(&sizeOfMap, 1, MPI_INT, 0, 10003, currentComm, &st);
-			fprintf(stderr, "%d:: create library components....\n", rank);
 			CreateLibraryComponents();
-			fprintf(stderr, "%d:: finish creating library components....\n", rank);
 		}
 	}	
 	else {
-		fprintf(stderr, "%d:: create library components....\n", rank);
 		MPI_Comm_dup(currentComm, &serverComm);
 		MPI_Comm_dup(currentComm, &reduceComm);
 		MPI_Comm_dup(currentComm, &barrierComm);
 		CreateLibraryComponents();
-		fprintf(stderr, "%d:: finish creating library components....\n", rank);
 	}
 }
 
@@ -142,7 +128,7 @@ void CloseLibraryComponents() {
 	// Close dispatcher
 	MPI_Isend(&exit, 1, MPI_INT, rank, 2001, currentComm, &s);
 	pthread_join(thrs[countOfWorkers], NULL);
-	fprintf(stderr, "%d:: dispetcher close\n", rank);
+	fprintf(stderr, "%d:: dispetcher is closed.\n", rank);
 	// Close old dispatcher
 	pthread_join(thrs[countOfWorkers + 3], NULL);
 	// Close workers
@@ -150,10 +136,11 @@ void CloseLibraryComponents() {
 		MPI_Isend(&exit, 1, MPI_INT, rank, 1999, currentComm, &s);
 	for (int i = 0; i < countOfWorkers; i++)
 		pthread_join(thrs[i], NULL);
+	fprintf(stderr, "%d:: workers are closed.\n", rank);
 	// Close map controller
 	MPI_Isend(&exit, 1, MPI_INT, rank, 1030, currentComm, &s);	
 	pthread_join(thrs[countOfWorkers + 1], NULL);
-	fprintf(stderr, "%d::map controller close\n", rank);
+	fprintf(stderr, "%d:: map controller is closed.\n", rank);
 	while (numberOfConnection < countOfConnect) {
 		int cond, size_new;
 		MPI_Recv(&cond, 1, MPI_INT, rank, 2001, currentComm, &st);
@@ -164,14 +151,13 @@ void CloseLibraryComponents() {
 			for (int k = size_old; k < size_new; k++)
 				MPI_Send(&cond, 1, MPI_INT, k, 10000, newComm);
 		}
-		//cond = 1;
 		MPI_Send(&cond, 1, MPI_INT, rank, 1998, currentComm);
 	}
 	// Close server
 	pthread_join(thrs[countOfWorkers + 2], NULL);
-	fprintf(stderr, "%d::server close\n", rank);
-	pthread_attr_destroy(&attrs_dispatcher);
+	fprintf(stderr, "%d:: server is closed;\n", rank);
+	/*pthread_attr_destroy(&attrs_dispatcher);
 	pthread_attr_destroy(&attrs_server);
 	pthread_attr_destroy(&attrs_mapController);
-	pthread_attr_destroy(&attrs_workers);
+	pthread_attr_destroy(&attrs_workers);*/
 }
