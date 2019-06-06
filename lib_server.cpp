@@ -38,5 +38,6 @@ void* server(void *me) {
 		// The previous connection must be finished
 		MPI_Recv(&cond, 1, MPI_INT, rank, 1998, oldComm, &st);
 	}
+	fprintf(stderr, "%d:: server is closed;\n", rank);
 	return 0;
 }

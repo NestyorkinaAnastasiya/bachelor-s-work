@@ -108,6 +108,7 @@ void* worker(void* me) {
 			else if (cond == -1) close = true;
 		}
 	}
+	fprintf(stderr, "%d:: worker is closed.\n", rank);
 	return 0;
 }
 

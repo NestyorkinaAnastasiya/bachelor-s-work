@@ -19,5 +19,6 @@ void* mapController(void* me) {
 		// Communicator changing 
 		else if (map_id == -10) Comm = newComm;
 	}
+	fprintf(stderr, "%d:: map controller is closed.\n", rank);
 	return 0;
 }

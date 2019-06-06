@@ -41,7 +41,8 @@ void* dispatcher_old(void* me) {
 		if (cond == 0) SendTask(st, currentComm, newComm_);
 		else if (cond == 4) { close = true;	}
 	}		
-	fprintf(stderr, "%d:: dispetcher_old close\n", rank);
+
+	fprintf(stderr, "%d:: old dispetcher is closed.\n", rank);
 	return 0;
 }
 
@@ -108,5 +109,6 @@ void* dispatcher(void* me) {
 		} // Close dispatcher 
 		else if (cond == -1) close = true;
 	}
+	fprintf(stderr, "%d:: dispetcher is closed.\n", rank);
 	return 0;
 }
