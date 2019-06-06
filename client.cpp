@@ -68,6 +68,7 @@ void FindSolution() {
 		fLoading << "iteration " << iteration << "::  " << allTasks.size() << "\ttasks\n";
 		if (oldClientRank == 0) printf("%d:: --------------------FINISH ITERATION %d---------------------\n", rank, iteration);
 	}
+	GenerateResult(reduceComm);
 	CloseLibraryComponents();
 	
 	fLoading.close();
@@ -92,7 +93,6 @@ int main(int argc, char **argv) {
 	if (map.size())	{
 		GenerateBasicConcepts();
 		FindSolution();
-		GenerateResult(reduceComm);
 	}
 	MPI_Finalize();
 	return 0;

@@ -74,6 +74,7 @@ void FindSolution() {
 		}
 		fLoading << "iteration " << iteration << "::  " << allTasks.size() << "\ttasks\n";
 	}	
+	GenerateResult(reduceComm);
 	CloseLibraryComponents();
 	fLoading.close();
 }
@@ -93,7 +94,6 @@ int main(int argc, char **argv) {
 	MPI_Allreduce(map.data(), tmp.data(), map.size(), MPI_INT, MPI_SUM, reduceComm);
 	map = tmp;
 	FindSolution();
-	GenerateResult(reduceComm);
 	MPI_Finalize();
 	fTime.close();
 	return 0;

@@ -127,19 +127,19 @@ void CloseLibraryComponents() {
 	int exit = -1;
 	// Close dispatcher
 	MPI_Isend(&exit, 1, MPI_INT, rank, 2001, currentComm, &s);
-	pthread_join(thrs[countOfWorkers], NULL);
+	//pthread_join(thrs[countOfWorkers], NULL);
 	fprintf(stderr, "%d:: dispetcher is closed.\n", rank);
 	// Close old dispatcher
-	pthread_join(thrs[countOfWorkers + 3], NULL);
+	//pthread_join(thrs[countOfWorkers + 3], NULL);
 	// Close workers
 	for (int i = 0; i < countOfWorkers; i++)
 		MPI_Isend(&exit, 1, MPI_INT, rank, 1999, currentComm, &s);
-	for (int i = 0; i < countOfWorkers; i++)
-		pthread_join(thrs[i], NULL);
+	/*for (int i = 0; i < countOfWorkers; i++)
+		pthread_join(thrs[i], NULL);*/
 	fprintf(stderr, "%d:: workers are closed.\n", rank);
 	// Close map controller
 	MPI_Isend(&exit, 1, MPI_INT, rank, 1030, currentComm, &s);	
-	pthread_join(thrs[countOfWorkers + 1], NULL);
+	//pthread_join(thrs[countOfWorkers + 1], NULL);
 	fprintf(stderr, "%d:: map controller is closed.\n", rank);
 	while (numberOfConnection < countOfConnect) {
 		int cond, size_new;
@@ -154,10 +154,10 @@ void CloseLibraryComponents() {
 		MPI_Send(&cond, 1, MPI_INT, rank, 1998, currentComm);
 	}
 	// Close server
-	pthread_join(thrs[countOfWorkers + 2], NULL);
+	//pthread_join(thrs[countOfWorkers + 2], NULL);
 	fprintf(stderr, "%d:: server is closed;\n", rank);
-	/*pthread_attr_destroy(&attrs_dispatcher);
+	pthread_attr_destroy(&attrs_dispatcher);
 	pthread_attr_destroy(&attrs_server);
 	pthread_attr_destroy(&attrs_mapController);
-	pthread_attr_destroy(&attrs_workers);*/
+	pthread_attr_destroy(&attrs_workers);
 }
