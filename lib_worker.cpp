@@ -166,7 +166,7 @@ void StartWork(bool clientProgram) {
 					}
 					MPI_Comm_dup(newComm, &serverComm);
 					MPI_Comm_dup(newComm, &reduceComm);
-					//MPI_Comm_dup(newComm, &barrierComm);
+					MPI_Comm_dup(newComm, &barrierComm);
 					flags.resize(size); globalFlags.resize(size);
 					for (int i = 0; i < countOfWorkers; i++)
 						MPI_Send(&cond, 1, MPI_INT, rank_old, 1997, currentComm);
